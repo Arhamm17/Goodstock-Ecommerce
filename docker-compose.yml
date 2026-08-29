@@ -1,0 +1,90 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: mongo
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: orderuser
+      POSTGRES_PASSWORD: orderpass
+      POSTGRES_DB: orderdb
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orderuser -d orderdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  product-service:
+    build: ./product-service
+    container_name: product-service
+    environment:
+      PORT: 4001
+      MONGO_URI: mongodb://mongo:27017/productdb
+    ports:
+      - "4001:4001"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  order-service:
+    build: ./order-service
+    container_name: order-service
+    environment:
+      PORT: 4002
+      DATABASE_URL: postgresql://orderuser:orderpass@postgres:5432/orderdb
+    ports:
+      - "4002:4002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  user-service:
+    build: ./user-service
+    container_name: user-service
+    environment:
+      PORT: 4003
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "4003:4003"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  frontend-gateway:
+    build: ./frontend-gateway
+    container_name: frontend-gateway
+    environment:
+      PORT: 4000
+      PRODUCT_SERVICE_URL: http://product-service:4001
+      ORDER_SERVICE_URL: http://order-service:4002
+      USER_SERVICE_URL: http://user-service:4003
+    ports:
+      - "4000:4000"
+    depends_on:
+      - product-service
+      - order-service
+      - user-service
+
+volumes:
+  mongo-data:
+  postgres-data:
