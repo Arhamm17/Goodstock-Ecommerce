@@ -1,0 +1,55 @@
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: yes
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+  become: yes
+
+- name: Install base packages
+  apt:
+    name:
+      - git
+      - curl
+      - unzip
+      - ca-certificates
+      - gnupg
+    state: present
+  become: yes
+
+- name: Check if swap file already exists
+  stat:
+    path: /swapfile
+  register: swap_file_check
+
+- name: Create swap file
+  command: fallocate -l {{ swap_size_mb }}M /swapfile
+  become: yes
+  when: not swap_file_check.stat.exists
+
+- name: Set swap file permissions
+  file:
+    path: /swapfile
+    mode: '0600'
+  become: yes
+  when: not swap_file_check.stat.exists
+
+- name: Format swap file
+  command: mkswap /swapfile
+  become: yes
+  when: not swap_file_check.stat.exists
+
+- name: Enable swap file
+  command: swapon /swapfile
+  become: yes
+  when: not swap_file_check.stat.exists
+
+- name: Persist swap file in fstab
+  lineinfile:
+    path: /etc/fstab
+    line: '/swapfile none swap sw 0 0'
+    state: present
+  become: yes

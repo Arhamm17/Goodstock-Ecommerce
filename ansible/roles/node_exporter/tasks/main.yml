@@ -1,0 +1,51 @@
+- name: Create node_exporter system group
+  group:
+    name: node_exporter
+    system: yes
+  become: yes
+
+- name: Create node_exporter system user
+  user:
+    name: node_exporter
+    group: node_exporter
+    system: yes
+    shell: /usr/sbin/nologin
+    create_home: no
+  become: yes
+
+- name: Download Node Exporter
+  get_url:
+    url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+    dest: /tmp/node_exporter.tar.gz
+  become: yes
+
+- name: Extract Node Exporter
+  unarchive:
+    src: /tmp/node_exporter.tar.gz
+    dest: /tmp
+    remote_src: yes
+  become: yes
+
+- name: Install node_exporter binary
+  copy:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+    dest: /usr/local/bin/node_exporter
+    remote_src: yes
+    owner: node_exporter
+    group: node_exporter
+    mode: '0755'
+  become: yes
+
+- name: Install node_exporter systemd unit
+  template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+  become: yes
+
+- name: Enable and start node_exporter
+  systemd:
+    daemon_reload: yes
+    name: node_exporter
+    enabled: yes
+    state: started
+  become: yes

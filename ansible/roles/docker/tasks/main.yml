@@ -1,0 +1,44 @@
+- name: Install Docker prerequisite packages
+  apt:
+    name:
+      - apt-transport-https
+      - software-properties-common
+    state: present
+  become: yes
+
+- name: Add Docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  become: yes
+
+- name: Add Docker apt repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+  become: yes
+
+- name: Install Docker Engine
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+    update_cache: yes
+  become: yes
+
+- name: Add ubuntu user to docker group
+  user:
+    name: ubuntu
+    groups: docker
+    append: yes
+  become: yes
+
+- name: Enable and start Docker service
+  systemd:
+    name: docker
+    enabled: yes
+    state: started
+  become: yes

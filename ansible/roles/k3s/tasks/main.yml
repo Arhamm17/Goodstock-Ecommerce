@@ -1,0 +1,34 @@
+- name: Install K3s (Traefik and ServiceLB disabled to save memory — our gateway handles routing)
+  shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --disable traefik --disable servicelb" sh -
+  args:
+    creates: /usr/local/bin/k3s
+  become: yes
+
+- name: Wait for K3s node to report Ready
+  shell: k3s kubectl get nodes
+  register: k3s_nodes
+  until: "'Ready' in k3s_nodes.stdout"
+  retries: 10
+  delay: 10
+  become: yes
+  changed_when: false
+
+- name: Ensure ubuntu user's .kube directory exists
+  file:
+    path: /home/ubuntu/.kube
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0700'
+  become: yes
+
+- name: Copy K3s kubeconfig for the ubuntu user
+  copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: /home/ubuntu/.kube/config
+    remote_src: yes
+    owner: ubuntu
+    group: ubuntu
+    mode: '0600'
+  become: yes

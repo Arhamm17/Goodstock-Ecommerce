@@ -1,0 +1,8 @@
+- name: Configure application server
+  hosts: app_servers
+  become: yes
+  roles:
+    - common
+    - docker
+    - k3s
+    - node_exporter

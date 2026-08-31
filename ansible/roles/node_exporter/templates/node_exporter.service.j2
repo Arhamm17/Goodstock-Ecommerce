@@ -1,0 +1,12 @@
+[Unit]
+Description=Prometheus Node Exporter
+After=network.target
+
+[Service]
+User=node_exporter
+Group=node_exporter
+Type=simple
+ExecStart=/usr/local/bin/node_exporter --web.listen-address=127.0.0.1:9100
+
+[Install]
+WantedBy=multi-user.target
