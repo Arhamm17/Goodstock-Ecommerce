@@ -3,7 +3,8 @@ __pycache__/
 *.pyc
 venv/
 .env
-*.logterraform/.terraform/
+*.log
+terraform/.terraform/
 terraform/terraform.tfstate*
 terraform/terraform.tfvars
 terraform/*.tfplan
