@@ -37,5 +37,22 @@ app.get('/products/:id', async (req, res) => {
   res.json(product);
 });
 
+app.patch('/products/:id/stock', async (req, res) => {
+  const product = await Product.findById(req.params.id);
+  if (!product) return res.status(404).json({ error: 'Not found' });
+
+  const delta = Number(req.body?.delta || 0);
+  product.stock = Math.max(0, Number(product.stock) + Number(delta));
+  await product.save();
+
+  res.json(product);
+});
+
+app.delete('/products/:id', async (req, res) => {
+  const product = await Product.findByIdAndDelete(req.params.id);
+  if (!product) return res.status(404).json({ error: 'Not found' });
+  res.json({ deleted: true, product });
+});
+
 const PORT = process.env.PORT || 4001;
 app.listen(PORT, () => console.log(`Product Service running on port ${PORT}`));

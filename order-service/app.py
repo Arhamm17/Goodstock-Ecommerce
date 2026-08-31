@@ -58,6 +58,47 @@ def create_order():
     conn.close()
     return jsonify(order), 201
 
+@app.route('/orders/<int:order_id>', methods=['PUT'])
+def update_order(order_id):
+    data = request.get_json() or {}
+    product_id = data.get('product_id')
+    quantity = data.get('quantity')
+    status = data.get('status', 'pending')
+
+    if product_id is None or quantity is None:
+        return jsonify({'error': 'product_id and quantity are required'}), 400
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        'UPDATE orders SET product_id=%s, quantity=%s, status=%s WHERE id=%s RETURNING *',
+        (product_id, quantity, status, order_id)
+    )
+    order = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    if not order:
+        return jsonify({'error': 'Order not found'}), 404
+
+    return jsonify(order)
+
+@app.route('/orders/<int:order_id>', methods=['DELETE'])
+def delete_order(order_id):
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('DELETE FROM orders WHERE id=%s RETURNING *', (order_id,))
+    deleted = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    if not deleted:
+        return jsonify({'error': 'Order not found'}), 404
+
+    return jsonify({'deleted': True, 'order': deleted})
+
 if __name__ == '__main__':
     init_db()
     port = int(os.getenv('PORT', 4002))
