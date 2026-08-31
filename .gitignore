@@ -3,4 +3,7 @@ __pycache__/
 *.pyc
 venv/
 .env
-*.log
+*.logterraform/.terraform/
+terraform/terraform.tfstate*
+terraform/terraform.tfvars
+terraform/*.tfplan
