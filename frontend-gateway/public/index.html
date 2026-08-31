@@ -4,7 +4,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Goodstock — Modern Store</title>
+<title>GoodStock</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%233d3af1'/%3E%3Cpath d='M17 28 32 18l15 10v20H17V28Z' fill='none' stroke='white' stroke-width='5' stroke-linejoin='round'/%3E%3Cpath d='M25 48V35h14v13M20 29h24' fill='none' stroke='white' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -25,6 +26,8 @@
     --amber: #c4791f;
     --danger: #d64545;
     --shadow: 0 12px 32px rgba(35,58,92,.08);
+    --card-border: #cbd6e4;
+    --add-card-border: #aebed1;
     --radius: 16px;
   }
 
@@ -43,6 +46,8 @@
     --amber: #e4a14d;
     --danger: #ff6b6b;
     --shadow: 0 14px 40px rgba(0,0,0,.22);
+    --card-border: #39414d;
+    --add-card-border: #4a5563;
   }
 
   * {
@@ -55,14 +60,15 @@
 
   body {
     margin: 0;
-    background:
-      linear-gradient(135deg, rgba(61,58,241,.12) 0%, transparent 34%),
-      linear-gradient(315deg, rgba(22,150,83,.08) 0%, transparent 38%),
-      var(--bg);
+    background: linear-gradient(135deg, #c9e3ff 0%, #e9f4ff 42%, #ffffff 100%);
     background-attachment: fixed;
     color: var(--ink);
     font-family: 'Inter', sans-serif;
     transition: background .25s ease, color .25s ease;
+  }
+
+  html.dark body {
+    background: linear-gradient(135deg, #29466b 0%, #1c2b42 45%, #0e1014 100%);
   }
 
   button,
@@ -98,11 +104,32 @@
   }
 
   .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
     font-family: 'Fraunces', serif;
     font-size: 25px;
     font-weight: 700;
     letter-spacing: -.03em;
     white-space: nowrap;
+  }
+
+  .brand-mark {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    padding: 6px;
+    border-radius: 10px;
+    background: var(--accent);
+    box-shadow: 0 5px 12px rgba(61,58,241,.2);
+  }
+
+  .brand-mark path {
+    fill: none;
+    stroke: white;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.8;
   }
 
   .brand span {
@@ -234,6 +261,39 @@
     }
   }
 
+  @keyframes productCardIn {
+    from {
+      opacity: 0;
+      transform: translateX(-28px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes actionCardPop {
+    from {
+      opacity: 0;
+      transform: scale(.92);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes addFormPop {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -46%) scale(.96);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+
   .signin-title {
     font-family: 'Fraunces', serif;
     font-size: 19px;
@@ -344,6 +404,7 @@
     box-shadow: var(--shadow);
     position: relative;
     overflow: hidden;
+    animation: productCardIn .55s cubic-bezier(.22,.7,.24,1) .18s both;
   }
 
   .hero-card::before {
@@ -444,13 +505,15 @@
 
   .card {
     background: var(--surface);
-    border: 1.5px solid #cbd6e4;
+    border: 1.5px solid var(--card-border);
     border-radius: var(--radius);
     overflow: hidden;
     display: flex;
     flex-direction: column;
     min-width: 0;
     box-shadow: 0 2px 0 rgba(61,58,241,.035);
+    animation: productCardIn .55s cubic-bezier(.22,.7,.24,1) both;
+    animation-delay: calc(var(--card-index, 0) * 70ms);
     transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
   }
 
@@ -654,7 +717,7 @@
   ========================= */
 
   .add-card {
-    border: 1.5px dashed #aebed1;
+    border: 1.5px dashed var(--add-card-border);
     border-radius: var(--radius);
     min-height: 300px;
     display: flex;
@@ -666,7 +729,9 @@
     font-weight: 600;
     text-align: center;
     padding: 20px;
+    cursor: pointer;
     transition: .2s;
+    animation: actionCardPop .5s cubic-bezier(.22,.7,.24,1) .3s both;
   }
 
   .add-card:hover {
@@ -681,6 +746,10 @@
     cursor: default;
   }
 
+  .add-card.editing:hover {
+    transform: none;
+  }
+
   .add-form {
     display: none;
     flex-direction: column;
@@ -691,6 +760,44 @@
 
   .add-form.open {
     display: flex;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 201;
+    width: min(420px, calc(100vw - 32px));
+    min-height: 0;
+    padding: 24px;
+    border: 1px solid var(--card-border);
+    border-radius: 18px;
+    background: var(--surface);
+    box-shadow: 0 24px 70px rgba(15,25,45,.25), 0 0 0 100vmax rgba(15,25,45,.42);
+    transform: translate(-50%, -50%);
+    animation: addFormPop .2s ease;
+  }
+
+  .add-form.open > strong {
+    align-self: flex-start;
+    padding-right: 42px;
+  }
+
+  .add-form-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .add-form-close:hover {
+    color: var(--ink);
+    border-color: var(--accent);
   }
 
   .add-form input {
@@ -803,7 +910,7 @@
     gap: 16px;
     padding: 16px 18px;
     background: var(--surface);
-    border: 1.5px solid #cbd6e4;
+    border: 1.5px solid var(--card-border);
     border-radius: 12px;
     margin-bottom: 10px;
     font-size: 13px;
@@ -1116,7 +1223,11 @@
   <nav>
 
     <div class="brand">
-      Good<span>stock</span>
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M5 14 16 7l11 7v12H5V14Z"></path>
+        <path d="M11 26v-9h10v9M7 14h18"></path>
+      </svg>
+      Good<span>Stock</span>
     </div>
 
     <div class="search-box">
@@ -1514,7 +1625,7 @@ function renderProducts(products) {
 
 
   grid.innerHTML =
-    products.map(p => {
+    products.map((p, index) => {
 
       const hue =
         hueFromName(p.name);
@@ -1527,7 +1638,7 @@ function renderProducts(products) {
 
       return `
 
-        <div class="card">
+        <div class="card" style="--card-index:${index};">
 
           <div
             class="thumb"
@@ -1671,6 +1782,10 @@ function attachProductEvents() {
       >
         Add product
       </strong>
+
+      <button class="add-form-close" id="add-form-close" type="button" aria-label="Close add product popup">
+        ×
+      </button>
 
       <input
         id="np-name"
@@ -1852,7 +1967,12 @@ function attachProductEvents() {
     addCard.querySelector('#add-form');
 
 
-  addLabel.addEventListener('click', () => {
+  const openAddForm = () => {
+    if (addForm.classList.contains('open')) {
+      return;
+    }
+
+    document.body.appendChild(addForm);
 
     addLabel.style.display =
       'none';
@@ -1861,6 +1981,25 @@ function attachProductEvents() {
 
     addCard.classList.add('editing');
 
+  };
+
+  const closeAddForm = () => {
+    addForm.classList.remove('open');
+    addCard.appendChild(addForm);
+    addLabel.style.display = '';
+    addCard.classList.remove('editing');
+  };
+
+  addCard.addEventListener('click', event => {
+    if (!event.target.closest('#add-form')) {
+      openAddForm();
+    }
+  });
+
+  addLabel.addEventListener('click', openAddForm);
+
+  addForm.querySelector('#add-form-close').addEventListener('click', () => {
+    closeAddForm();
   });
 
 
@@ -1922,6 +2061,7 @@ function attachProductEvents() {
           'success'
         );
 
+        closeAddForm();
         refreshProducts();
 
       } catch {
