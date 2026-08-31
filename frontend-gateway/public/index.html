@@ -11,12 +11,12 @@
 
 <style>
   :root {
-    --bg: #f5f5f7;
+    --bg: #f3f6fb;
     --surface: #ffffff;
-    --surface-2: #fafafa;
+    --surface-2: #f8fafc;
     --ink: #17181c;
     --muted: #73757d;
-    --border: #e5e5e8;
+    --border: #dfe6ef;
     --accent: #3d3af1;
     --accent-dark: #2d2ac5;
     --accent-soft: rgba(61,58,241,.09);
@@ -24,7 +24,7 @@
     --green-soft: rgba(22,150,83,.10);
     --amber: #c4791f;
     --danger: #d64545;
-    --shadow: 0 10px 30px rgba(20,20,30,.06);
+    --shadow: 0 12px 32px rgba(35,58,92,.08);
     --radius: 16px;
   }
 
@@ -55,7 +55,11 @@
 
   body {
     margin: 0;
-    background: var(--bg);
+    background:
+      linear-gradient(135deg, rgba(61,58,241,.12) 0%, transparent 34%),
+      linear-gradient(315deg, rgba(22,150,83,.08) 0%, transparent 38%),
+      var(--bg);
+    background-attachment: fixed;
     color: var(--ink);
     font-family: 'Inter', sans-serif;
     transition: background .25s ease, color .25s ease;
@@ -338,6 +342,18 @@
     border-radius: 22px;
     padding: 24px;
     box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--green));
   }
 
   .hero-card-title {
@@ -365,6 +381,20 @@
 
   .stat-value {
     font-weight: 700;
+    font-size: 16px;
+    font-family: 'Fraunces', serif;
+  }
+
+  .stat:nth-child(2) .stat-value {
+    color: var(--accent);
+  }
+
+  .stat:nth-child(3) .stat-value {
+    color: var(--amber);
+  }
+
+  .stat:nth-child(4) .stat-value {
+    color: var(--green);
   }
 
   /* =========================
@@ -414,19 +444,24 @@
 
   .card {
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1.5px solid #cbd6e4;
     border-radius: var(--radius);
     overflow: hidden;
     display: flex;
     flex-direction: column;
     min-width: 0;
+    box-shadow: 0 2px 0 rgba(61,58,241,.035);
     transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
   }
 
   .card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow);
-    border-color: rgba(61,58,241,.25);
+    border-color: rgba(61,58,241,.32);
+  }
+
+  .card:hover .thumb {
+    filter: saturate(1.08) brightness(1.03);
   }
 
   .thumb {
@@ -440,6 +475,7 @@
     font-weight: 700;
     color: rgba(255,255,255,.94);
     overflow: hidden;
+    transition: filter .35s ease;
   }
 
   .thumb::after {
@@ -451,6 +487,11 @@
     background: rgba(255,255,255,.10);
     right: -35px;
     bottom: -45px;
+    transition: transform .35s ease;
+  }
+
+  .card:hover .thumb::after {
+    transform: scale(1.22) rotate(12deg);
   }
 
   .product-badge {
@@ -470,6 +511,9 @@
 
   .card-body {
     padding: 17px;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
   }
 
   .pname {
@@ -567,20 +611,20 @@
 
   .stock-action-btn {
     width: 100%;
-    margin-top: 10px;
+    margin-top: 8px;
     padding: 9px 10px;
-    border: 1px solid var(--border);
+    border: 1px solid rgba(61,58,241,.2);
     border-radius: 8px;
-    background: var(--surface-2);
-    color: var(--ink);
+    background: var(--accent-soft);
+    color: var(--accent);
     font-size: 11px;
     font-weight: 700;
     transition: .2s;
   }
 
   .stock-action-btn:hover {
+    background: rgba(61,58,241,.15);
     border-color: var(--accent);
-    color: var(--accent);
   }
 
   .buy-btn:disabled {
@@ -590,7 +634,7 @@
 
   .delete-product-btn {
     width: 100%;
-    margin-top: 10px;
+    margin-top: 8px;
     padding: 9px 10px;
     border: 1px solid rgba(214,69,69,.24);
     border-radius: 8px;
@@ -610,12 +654,13 @@
   ========================= */
 
   .add-card {
-    border: 1.5px dashed var(--border);
+    border: 1.5px dashed #aebed1;
     border-radius: var(--radius);
     min-height: 300px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: linear-gradient(145deg, rgba(61,58,241,.055), rgba(22,150,83,.045));
     color: var(--muted);
     font-size: 14px;
     font-weight: 600;
@@ -627,6 +672,8 @@
   .add-card:hover {
     border-color: var(--accent);
     color: var(--accent);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
   }
 
   .add-card.editing {
@@ -756,15 +803,18 @@
     gap: 16px;
     padding: 16px 18px;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1.5px solid #cbd6e4;
     border-radius: 12px;
     margin-bottom: 10px;
     font-size: 13px;
+    box-shadow: 0 2px 0 rgba(61,58,241,.035);
     transition: .2s;
   }
 
   .order-row:hover {
-    border-color: rgba(61,58,241,.3);
+    border-color: rgba(61,58,241,.38);
+    box-shadow: 4px 8px 22px rgba(35,58,92,.08);
+    transform: translateX(3px);
   }
 
   .order-main {
