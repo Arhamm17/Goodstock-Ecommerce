@@ -2339,10 +2339,6 @@ async function refreshOrders() {
             status: 'completed'
           });
 
-          await api('PATCH', `/api/products/${productId}/stock`, {
-            delta: -quantity
-          });
-
           showToast('Order marked as completed', 'success');
           refreshProducts();
         } catch {

@@ -40,8 +40,8 @@ services:
     environment:
       PORT: 4001
       MONGO_URI: mongodb://mongo:27017/productdb
-    ports:
-      - "4001:4001"
+    expose:
+      - "4001"
     depends_on:
       mongo:
         condition: service_healthy
@@ -52,8 +52,9 @@ services:
     environment:
       PORT: 4002
       DATABASE_URL: postgresql://orderuser:orderpass@postgres:5432/orderdb
-    ports:
-      - "4002:4002"
+      API_GATEWAY_URL: http://api-gateway/
+    expose:
+      - "4002"
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,8 +65,8 @@ services:
     environment:
       PORT: 4003
       REDIS_URL: redis://redis:6379
-    ports:
-      - "4003:4003"
+    expose:
+      - "4003"
     depends_on:
       redis:
         condition: service_healthy
@@ -73,14 +74,20 @@ services:
   frontend-gateway:
     build: ./frontend-gateway
     container_name: frontend-gateway
-    environment:
-      PORT: 4000
-      PRODUCT_SERVICE_URL: http://product-service:4001
-      ORDER_SERVICE_URL: http://order-service:4002
-      USER_SERVICE_URL: http://user-service:4003
-    ports:
-      - "4000:4000"
+    expose:
+      - "8080"
     depends_on:
+      - product-service
+      - order-service
+      - user-service
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend-gateway
       - product-service
       - order-service
       - user-service

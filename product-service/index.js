@@ -38,14 +38,33 @@ app.get('/products/:id', async (req, res) => {
 });
 
 app.patch('/products/:id/stock', async (req, res) => {
-  const product = await Product.findById(req.params.id);
-  if (!product) return res.status(404).json({ error: 'Not found' });
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ error: 'Product not found' });
 
-  const delta = Number(req.body?.delta || 0);
-  product.stock = Math.max(0, Number(product.stock) + Number(delta));
-  await product.save();
+    const delta = Number(req.body?.delta);
 
-  res.json(product);
+    if (!Number.isFinite(delta) || delta === 0) {
+      return res.status(400).json({ error: 'delta must be a non-zero number' });
+    }
+
+    const currentStock = Number(product.stock || 0);
+    const newStock = currentStock + delta;
+
+    if (newStock < 0) {
+      return res.status(400).json({
+        error: `Insufficient stock. Available stock: ${currentStock}`,
+      });
+    }
+
+    product.stock = newStock;
+    await product.save();
+
+    return res.json(product);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Could not update product stock' });
+  }
 });
 
 app.delete('/products/:id', async (req, res) => {
