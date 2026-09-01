@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: devops-ecommerce
+data:
+  PRODUCT_PORT: "4001"
+  ORDER_PORT: "4002"
+  USER_PORT: "4003"
+
+  MONGO_URI: "mongodb://mongo:27017/productdb"
+  REDIS_URL: "redis://redis:6379"
+
+  API_GATEWAY_URL: "http://api-gateway"
