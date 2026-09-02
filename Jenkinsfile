@@ -10,17 +10,24 @@ pipeline {
     environment {
         DOCKERHUB_NAMESPACE = 'YOUR_DOCKERHUB_USERNAME'
 
-        API_GATEWAY_IMAGE = "${arhammrashid17}/devops-ecommerce-api-gateway"
-        FRONTEND_IMAGE    = "${arhammrashid17}/devops-ecommerce-frontend"
-        PRODUCT_IMAGE     = "${arhammrashid17}/devops-ecommerce-product"
-        ORDER_IMAGE       = "${arhammrashid17}/devops-ecommerce-order"
-        USER_IMAGE        = "${arhammrashid17}/devops-ecommerce-user"
+        API_GATEWAY_IMAGE = "${DOCKERHUB_NAMESPACE}/devops-ecommerce-api-gateway"
+        FRONTEND_IMAGE    = "${DOCKERHUB_NAMESPACE}/devops-ecommerce-frontend"
+        PRODUCT_IMAGE     = "${DOCKERHUB_NAMESPACE}/devops-ecommerce-product"
+        ORDER_IMAGE       = "${DOCKERHUB_NAMESPACE}/devops-ecommerce-order"
+        USER_IMAGE        = "${DOCKERHUB_NAMESPACE}/devops-ecommerce-user"
 
         KUBECONFIG    = '/var/lib/jenkins/.kube/config'
         K8S_NAMESPACE = 'devops-ecommerce'
+
+        API_GATEWAY_CHANGED = 'false'
+        FRONTEND_CHANGED    = 'false'
+        PRODUCT_CHANGED     = 'false'
+        ORDER_CHANGED       = 'false'
+        USER_CHANGED        = 'false'
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
@@ -38,6 +45,78 @@ pipeline {
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}-${shortCommit}"
 
                     echo "Image tag: ${env.IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Detect Changes') {
+            steps {
+                script {
+
+                    if (!env.GIT_PREVIOUS_SUCCESSFUL_COMMIT?.trim()) {
+
+                        echo 'No previous successful Jenkins commit found.'
+                        echo 'This appears to be the first deployment, so all images will be built.'
+
+                        env.API_GATEWAY_CHANGED = 'true'
+                        env.FRONTEND_CHANGED    = 'true'
+                        env.PRODUCT_CHANGED     = 'true'
+                        env.ORDER_CHANGED       = 'true'
+                        env.USER_CHANGED        = 'true'
+
+                    } else {
+
+                        def changedFiles = sh(
+                            script: """
+                                git diff --name-only \
+                                ${env.GIT_PREVIOUS_SUCCESSFUL_COMMIT} \
+                                ${env.GIT_COMMIT}
+                            """,
+                            returnStdout: true
+                        ).trim()
+
+                        echo 'Changed files:'
+                        echo changedFiles ?: 'No changed files detected'
+
+                        def files = changedFiles ?
+                            changedFiles.readLines() : []
+
+                        env.API_GATEWAY_CHANGED =
+                            files.any {
+                                it.startsWith('api-gateway/')
+                            }.toString()
+
+                        env.FRONTEND_CHANGED =
+                            files.any {
+                                it.startsWith('frontend-gateway/')
+                            }.toString()
+
+                        env.PRODUCT_CHANGED =
+                            files.any {
+                                it.startsWith('product-service/')
+                            }.toString()
+
+                        env.ORDER_CHANGED =
+                            files.any {
+                                it.startsWith('order-service/')
+                            }.toString()
+
+                        env.USER_CHANGED =
+                            files.any {
+                                it.startsWith('user-service/')
+                            }.toString()
+                    }
+
+                    echo """
+                    Change detection result:
+                    --------------------------------
+                    API Gateway : ${env.API_GATEWAY_CHANGED}
+                    Frontend    : ${env.FRONTEND_CHANGED}
+                    Product     : ${env.PRODUCT_CHANGED}
+                    Order       : ${env.ORDER_CHANGED}
+                    User        : ${env.USER_CHANGED}
+                    --------------------------------
+                    """
                 }
             }
         }
@@ -61,27 +140,79 @@ pipeline {
             }
         }
 
-        stage('Build Images') {
+        stage('Build API Gateway') {
+            when {
+                expression {
+                    env.API_GATEWAY_CHANGED == 'true'
+                }
+            }
+
             steps {
                 sh '''
-                    set -eux
-
                     docker build \
                       -t ${API_GATEWAY_IMAGE}:${IMAGE_TAG} \
                       ./api-gateway
+                '''
+            }
+        }
 
+        stage('Build Frontend') {
+            when {
+                expression {
+                    env.FRONTEND_CHANGED == 'true'
+                }
+            }
+
+            steps {
+                sh '''
                     docker build \
                       -t ${FRONTEND_IMAGE}:${IMAGE_TAG} \
                       ./frontend-gateway
+                '''
+            }
+        }
 
+        stage('Build Product Service') {
+            when {
+                expression {
+                    env.PRODUCT_CHANGED == 'true'
+                }
+            }
+
+            steps {
+                sh '''
                     docker build \
                       -t ${PRODUCT_IMAGE}:${IMAGE_TAG} \
                       ./product-service
+                '''
+            }
+        }
 
+        stage('Build Order Service') {
+            when {
+                expression {
+                    env.ORDER_CHANGED == 'true'
+                }
+            }
+
+            steps {
+                sh '''
                     docker build \
                       -t ${ORDER_IMAGE}:${IMAGE_TAG} \
                       ./order-service
+                '''
+            }
+        }
 
+        stage('Build User Service') {
+            when {
+                expression {
+                    env.USER_CHANGED == 'true'
+                }
+            }
+
+            steps {
+                sh '''
                     docker build \
                       -t ${USER_IMAGE}:${IMAGE_TAG} \
                       ./user-service
@@ -90,6 +221,17 @@ pipeline {
         }
 
         stage('Push Images') {
+
+            when {
+                expression {
+                    env.API_GATEWAY_CHANGED == 'true' ||
+                    env.FRONTEND_CHANGED == 'true' ||
+                    env.PRODUCT_CHANGED == 'true' ||
+                    env.ORDER_CHANGED == 'true' ||
+                    env.USER_CHANGED == 'true'
+                }
+            }
+
             steps {
                 withCredentials([
                     usernamePassword(
@@ -98,6 +240,7 @@ pipeline {
                         passwordVariable: 'DOCKERHUB_TOKEN'
                     )
                 ]) {
+
                     sh '''
                         set +x
 
@@ -107,72 +250,152 @@ pipeline {
                           --password-stdin
 
                         set -x
-
-                        docker push ${API_GATEWAY_IMAGE}:${IMAGE_TAG}
-                        docker push ${FRONTEND_IMAGE}:${IMAGE_TAG}
-                        docker push ${PRODUCT_IMAGE}:${IMAGE_TAG}
-                        docker push ${ORDER_IMAGE}:${IMAGE_TAG}
-                        docker push ${USER_IMAGE}:${IMAGE_TAG}
-
-                        docker logout
                     '''
+
+                    script {
+
+                        if (env.API_GATEWAY_CHANGED == 'true') {
+                            sh '''
+                                docker push \
+                                  ${API_GATEWAY_IMAGE}:${IMAGE_TAG}
+                            '''
+                        }
+
+                        if (env.FRONTEND_CHANGED == 'true') {
+                            sh '''
+                                docker push \
+                                  ${FRONTEND_IMAGE}:${IMAGE_TAG}
+                            '''
+                        }
+
+                        if (env.PRODUCT_CHANGED == 'true') {
+                            sh '''
+                                docker push \
+                                  ${PRODUCT_IMAGE}:${IMAGE_TAG}
+                            '''
+                        }
+
+                        if (env.ORDER_CHANGED == 'true') {
+                            sh '''
+                                docker push \
+                                  ${ORDER_IMAGE}:${IMAGE_TAG}
+                            '''
+                        }
+
+                        if (env.USER_CHANGED == 'true') {
+                            sh '''
+                                docker push \
+                                  ${USER_IMAGE}:${IMAGE_TAG}
+                            '''
+                        }
+                    }
+
+                    sh 'docker logout'
                 }
             }
         }
 
         stage('Deploy to K3s') {
             steps {
-                sh '''
-                    set -eux
+                script {
 
-                    kubectl set image \
-                      deployment/api-gateway \
-                      api-gateway=${API_GATEWAY_IMAGE}:${IMAGE_TAG} \
-                      -n ${K8S_NAMESPACE}
+                    if (env.API_GATEWAY_CHANGED == 'true') {
+                        sh '''
+                            kubectl set image \
+                              deployment/api-gateway \
+                              api-gateway=${API_GATEWAY_IMAGE}:${IMAGE_TAG} \
+                              -n ${K8S_NAMESPACE}
+                        '''
+                    }
 
-                    kubectl set image \
-                      deployment/frontend-gateway \
-                      frontend-gateway=${FRONTEND_IMAGE}:${IMAGE_TAG} \
-                      -n ${K8S_NAMESPACE}
+                    if (env.FRONTEND_CHANGED == 'true') {
+                        sh '''
+                            kubectl set image \
+                              deployment/frontend-gateway \
+                              frontend-gateway=${FRONTEND_IMAGE}:${IMAGE_TAG} \
+                              -n ${K8S_NAMESPACE}
+                        '''
+                    }
 
-                    kubectl set image \
-                      deployment/product-service \
-                      product-service=${PRODUCT_IMAGE}:${IMAGE_TAG} \
-                      -n ${K8S_NAMESPACE}
+                    if (env.PRODUCT_CHANGED == 'true') {
+                        sh '''
+                            kubectl set image \
+                              deployment/product-service \
+                              product-service=${PRODUCT_IMAGE}:${IMAGE_TAG} \
+                              -n ${K8S_NAMESPACE}
+                        '''
+                    }
 
-                    kubectl set image \
-                      deployment/order-service \
-                      order-service=${ORDER_IMAGE}:${IMAGE_TAG} \
-                      -n ${K8S_NAMESPACE}
+                    if (env.ORDER_CHANGED == 'true') {
+                        sh '''
+                            kubectl set image \
+                              deployment/order-service \
+                              order-service=${ORDER_IMAGE}:${IMAGE_TAG} \
+                              -n ${K8S_NAMESPACE}
+                        '''
+                    }
 
-                    kubectl set image \
-                      deployment/user-service \
-                      user-service=${USER_IMAGE}:${IMAGE_TAG} \
-                      -n ${K8S_NAMESPACE}
-                '''
+                    if (env.USER_CHANGED == 'true') {
+                        sh '''
+                            kubectl set image \
+                              deployment/user-service \
+                              user-service=${USER_IMAGE}:${IMAGE_TAG} \
+                              -n ${K8S_NAMESPACE}
+                        '''
+                    }
+                }
             }
         }
 
         stage('Verify Rollouts') {
             steps {
-                sh '''
-                    set -eux
+                script {
 
-                    kubectl rollout status deployment/api-gateway \
-                      -n ${K8S_NAMESPACE} --timeout=180s
+                    if (env.API_GATEWAY_CHANGED == 'true') {
+                        sh '''
+                            kubectl rollout status \
+                              deployment/api-gateway \
+                              -n ${K8S_NAMESPACE} \
+                              --timeout=180s
+                        '''
+                    }
 
-                    kubectl rollout status deployment/frontend-gateway \
-                      -n ${K8S_NAMESPACE} --timeout=180s
+                    if (env.FRONTEND_CHANGED == 'true') {
+                        sh '''
+                            kubectl rollout status \
+                              deployment/frontend-gateway \
+                              -n ${K8S_NAMESPACE} \
+                              --timeout=180s
+                        '''
+                    }
 
-                    kubectl rollout status deployment/product-service \
-                      -n ${K8S_NAMESPACE} --timeout=180s
+                    if (env.PRODUCT_CHANGED == 'true') {
+                        sh '''
+                            kubectl rollout status \
+                              deployment/product-service \
+                              -n ${K8S_NAMESPACE} \
+                              --timeout=180s
+                        '''
+                    }
 
-                    kubectl rollout status deployment/order-service \
-                      -n ${K8S_NAMESPACE} --timeout=180s
+                    if (env.ORDER_CHANGED == 'true') {
+                        sh '''
+                            kubectl rollout status \
+                              deployment/order-service \
+                              -n ${K8S_NAMESPACE} \
+                              --timeout=180s
+                        '''
+                    }
 
-                    kubectl rollout status deployment/user-service \
-                      -n ${K8S_NAMESPACE} --timeout=180s
-                '''
+                    if (env.USER_CHANGED == 'true') {
+                        sh '''
+                            kubectl rollout status \
+                              deployment/user-service \
+                              -n ${K8S_NAMESPACE} \
+                              --timeout=180s
+                        '''
+                    }
+                }
             }
         }
 
@@ -203,10 +426,11 @@ pipeline {
         stage('Deployment Summary') {
             steps {
                 sh '''
-                    echo "Deployed tag: ${IMAGE_TAG}"
+                    echo "Pipeline image tag: ${IMAGE_TAG}"
 
                     kubectl get deployments \
-                      -n ${K8S_NAMESPACE}
+                      -n ${K8S_NAMESPACE} \
+                      -o custom-columns='NAME:.metadata.name,IMAGE:.spec.template.spec.containers[*].image'
 
                     kubectl get pods \
                       -n ${K8S_NAMESPACE}
@@ -216,13 +440,14 @@ pipeline {
     }
 
     post {
+
         success {
-            echo "CI/CD deployment successful."
-            echo "Image tag: ${env.IMAGE_TAG}"
+            echo 'CI/CD pipeline completed successfully.'
+            echo "Pipeline image tag: ${env.IMAGE_TAG}"
         }
 
         failure {
-            echo "Pipeline failed. Collecting Kubernetes diagnostics."
+            echo 'Pipeline failed. Collecting Kubernetes diagnostics.'
 
             sh '''
                 kubectl get pods \
