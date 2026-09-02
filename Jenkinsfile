@@ -8,14 +8,6 @@ pipeline {
     }
 
     environment {
-        DOCKERHUB_NAMESPACE = 'arhammrashid17'
-
-        API_GATEWAY_IMAGE = "${arhammrashid17}/devops-ecommerce-api-gateway"
-        FRONTEND_IMAGE    = "${arhammrashid17}/devops-ecommerce-frontend"
-        PRODUCT_IMAGE     = "${arhammrashid17}/devops-ecommerce-product"
-        ORDER_IMAGE       = "${arhammrashid17}/devops-ecommerce-order"
-        USER_IMAGE        = "${arhammrashid17}/devops-ecommerce-user"
-
         KUBECONFIG    = '/var/lib/jenkins/.kube/config'
         K8S_NAMESPACE = 'devops-ecommerce'
 
@@ -31,7 +23,15 @@ pipeline {
 
         stage('Initialize') {
             steps {
+                withCredentials([
+                    usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKERHUB_USER',
+                    passwordVariable: 'DOCKERHUB_TOKEN'
+                 )
+            ]) {
                 script {
+
                     def shortCommit = sh(
                         script: 'git rev-parse --short=7 HEAD',
                         returnStdout: true
@@ -39,10 +39,18 @@ pipeline {
 
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}-${shortCommit}"
 
+                    env.API_GATEWAY_IMAGE = "${DOCKERHUB_USER}/devops-ecommerce-api-gateway"
+                    env.FRONTEND_IMAGE = "${DOCKERHUB_USER}/devops-ecommerce-frontend"
+                    env.PRODUCT_IMAGE = "${DOCKERHUB_USER}/devops-ecommerce-product"
+                    env.ORDER_IMAGE = "${DOCKERHUB_USER}/devops-ecommerce-order"
+                    env.USER_IMAGE = "${DOCKERHUB_USER}/devops-ecommerce-user"
+
                     echo "Image tag: ${env.IMAGE_TAG}"
+                    echo "Docker Hub namespace loaded dynamically"
                 }
             }
         }
+    }
 
         stage('Detect Changes') {
     steps {
