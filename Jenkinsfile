@@ -66,45 +66,56 @@ pipeline {
 
                     } else {
 
-                        def changedFiles = sh(
-                            script: """
-                                git diff --name-only \
-                                ${env.GIT_PREVIOUS_SUCCESSFUL_COMMIT} \
-                                ${env.GIT_COMMIT}
-                            """,
-                            returnStdout: true
-                        ).trim()
+                        sh """
+                            git diff --name-only \
+                              ${env.GIT_PREVIOUS_SUCCESSFUL_COMMIT} \
+                              ${env.GIT_COMMIT} \
+                              > /tmp/jenkins-changed-files.txt
+                        """
 
-                        echo 'Changed files:'
-                        echo changedFiles ?: 'No changed files detected'
+                        sh '''
+                            echo "Changed files:"
+                            if [ -s /tmp/jenkins-changed-files.txt ]; then
+                                cat /tmp/jenkins-changed-files.txt
+                            else
+                                echo "No changed files detected"
+                            fi
+                        '''
 
-                        def files = changedFiles ?
-                            changedFiles.readLines() : []
+                        env.API_GATEWAY_CHANGED = (
+                            sh(
+                                script: "grep -q '^api-gateway/' /tmp/jenkins-changed-files.txt",
+                                returnStatus: true
+                            ) == 0
+                        ).toString()
 
-                        env.API_GATEWAY_CHANGED =
-                            files.any {
-                                it.startsWith('api-gateway/')
-                            }.toString()
+                        env.FRONTEND_CHANGED = (
+                            sh(
+                                script: "grep -q '^frontend-gateway/' /tmp/jenkins-changed-files.txt",
+                                returnStatus: true
+                            ) == 0
+                        ).toString()
 
-                        env.FRONTEND_CHANGED =
-                            files.any {
-                                it.startsWith('frontend-gateway/')
-                            }.toString()
+                        env.PRODUCT_CHANGED = (
+                            sh(
+                                script: "grep -q '^product-service/' /tmp/jenkins-changed-files.txt",
+                                returnStatus: true
+                            ) == 0
+                        ).toString()
 
-                        env.PRODUCT_CHANGED =
-                            files.any {
-                                it.startsWith('product-service/')
-                            }.toString()
+                        env.ORDER_CHANGED = (
+                            sh(
+                                script: "grep -q '^order-service/' /tmp/jenkins-changed-files.txt",
+                                returnStatus: true
+                            ) == 0
+                        ).toString()
 
-                        env.ORDER_CHANGED =
-                            files.any {
-                                it.startsWith('order-service/')
-                            }.toString()
-
-                        env.USER_CHANGED =
-                            files.any {
-                                it.startsWith('user-service/')
-                            }.toString()
+                        env.USER_CHANGED = (
+                            sh(
+                                script: "grep -q '^user-service/' /tmp/jenkins-changed-files.txt",
+                                returnStatus: true
+                            ) == 0
+                        ).toString()
                     }
 
                     echo """
@@ -120,7 +131,6 @@ pipeline {
                 }
             }
         }
-
         stage('Validate') {
             steps {
                 sh '''
