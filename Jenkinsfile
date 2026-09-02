@@ -50,87 +50,107 @@ pipeline {
         }
 
         stage('Detect Changes') {
-            steps {
-                script {
+    steps {
+        script {
 
-                    if (!env.GIT_PREVIOUS_SUCCESSFUL_COMMIT?.trim()) {
+            if (!env.GIT_PREVIOUS_SUCCESSFUL_COMMIT?.trim()) {
 
-                        echo 'No previous successful Jenkins commit found.'
-                        echo 'This appears to be the first deployment, so all images will be built.'
+                echo 'No previous successful Jenkins commit found.'
+                echo 'Building all application images.'
 
-                        env.API_GATEWAY_CHANGED = 'true'
-                        env.FRONTEND_CHANGED    = 'true'
-                        env.PRODUCT_CHANGED     = 'true'
-                        env.ORDER_CHANGED       = 'true'
-                        env.USER_CHANGED        = 'true'
+                env.API_GATEWAY_CHANGED = 'true'
+                env.FRONTEND_CHANGED    = 'true'
+                env.PRODUCT_CHANGED     = 'true'
+                env.ORDER_CHANGED       = 'true'
+                env.USER_CHANGED        = 'true'
 
-                    } else {
+            } else {
 
-                        sh """
-                            git diff --name-only \
-                              ${env.GIT_PREVIOUS_SUCCESSFUL_COMMIT} \
-                              ${env.GIT_COMMIT} \
-                              > /tmp/jenkins-changed-files.txt
-                        """
+                sh """
+                    git diff --name-only \
+                      ${env.GIT_PREVIOUS_SUCCESSFUL_COMMIT} \
+                      ${env.GIT_COMMIT} \
+                      > changed-files.txt
+                """
 
-                        sh '''
-                            echo "Changed files:"
-                            if [ -s /tmp/jenkins-changed-files.txt ]; then
-                                cat /tmp/jenkins-changed-files.txt
-                            else
-                                echo "No changed files detected"
-                            fi
-                        '''
+                sh '''
+                    echo "Changed files:"
+                    if [ -s changed-files.txt ]; then
+                        cat changed-files.txt
+                    else
+                        echo "No changed files detected"
+                    fi
+                '''
 
-                        env.API_GATEWAY_CHANGED = (
-                            sh(
-                                script: "grep -q '^api-gateway/' /tmp/jenkins-changed-files.txt",
-                                returnStatus: true
-                            ) == 0
-                        ).toString()
+                env.API_GATEWAY_CHANGED = sh(
+                    script: """
+                        if grep -q '^api-gateway/' changed-files.txt; then
+                            echo true
+                        else
+                            echo false
+                        fi
+                    """,
+                    returnStdout: true
+                ).trim()
 
-                        env.FRONTEND_CHANGED = (
-                            sh(
-                                script: "grep -q '^frontend-gateway/' /tmp/jenkins-changed-files.txt",
-                                returnStatus: true
-                            ) == 0
-                        ).toString()
+                env.FRONTEND_CHANGED = sh(
+                    script: """
+                        if grep -q '^frontend-gateway/' changed-files.txt; then
+                            echo true
+                        else
+                            echo false
+                        fi
+                    """,
+                    returnStdout: true
+                ).trim()
 
-                        env.PRODUCT_CHANGED = (
-                            sh(
-                                script: "grep -q '^product-service/' /tmp/jenkins-changed-files.txt",
-                                returnStatus: true
-                            ) == 0
-                        ).toString()
+                env.PRODUCT_CHANGED = sh(
+                    script: """
+                        if grep -q '^product-service/' changed-files.txt; then
+                            echo true
+                        else
+                            echo false
+                        fi
+                    """,
+                    returnStdout: true
+                ).trim()
 
-                        env.ORDER_CHANGED = (
-                            sh(
-                                script: "grep -q '^order-service/' /tmp/jenkins-changed-files.txt",
-                                returnStatus: true
-                            ) == 0
-                        ).toString()
+                env.ORDER_CHANGED = sh(
+                    script: """
+                        if grep -q '^order-service/' changed-files.txt; then
+                            echo true
+                        else
+                            echo false
+                        fi
+                    """,
+                    returnStdout: true
+                ).trim()
 
-                        env.USER_CHANGED = (
-                            sh(
-                                script: "grep -q '^user-service/' /tmp/jenkins-changed-files.txt",
-                                returnStatus: true
-                            ) == 0
-                        ).toString()
-                    }
-
-                    echo """
-                    Change detection result:
-                    --------------------------------
-                    API Gateway : ${env.API_GATEWAY_CHANGED}
-                    Frontend    : ${env.FRONTEND_CHANGED}
-                    Product     : ${env.PRODUCT_CHANGED}
-                    Order       : ${env.ORDER_CHANGED}
-                    User        : ${env.USER_CHANGED}
-                    --------------------------------
-                    """
-                }
+                env.USER_CHANGED = sh(
+                    script: """
+                        if grep -q '^user-service/' changed-files.txt; then
+                            echo true
+                        else
+                            echo false
+                        fi
+                    """,
+                    returnStdout: true
+                ).trim()
             }
+
+            echo """
+                Change detection result:
+                --------------------------------
+                API Gateway : ${env.API_GATEWAY_CHANGED}
+                Frontend    : ${env.FRONTEND_CHANGED}
+                Product     : ${env.PRODUCT_CHANGED}
+Order       : ${env.ORDER_CHANGED}
+User        : ${env.USER_CHANGED}
+--------------------------------
+"""
         }
+    }
+}
         stage('Validate') {
             steps {
                 sh '''
