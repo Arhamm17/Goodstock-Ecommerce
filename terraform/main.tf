@@ -30,6 +30,14 @@ resource "aws_security_group" "app_server" {
     cidr_blocks = [var.my_ip_cidr]
   }
 
+  ingress {
+  description = "K3s NodePort for e-commerce app"
+  from_port   = 30080
+  to_port     = 30080
+  protocol    = "tcp"
+  cidr_blocks = [var.my_ip_cidr]
+}
+
   egress {
     description = "Allow all outbound (needed for apt, Docker pulls, etc.)"
     from_port   = 0

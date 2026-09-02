@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: devops-ecommerce
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: order-service
+
+  template:
+    metadata:
+      labels:
+        app: order-service
+
+    spec:
+      containers:
+        - name: order-service
+          image: devops-ecommerce-order:phase5b
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 4002
+
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ORDER_PORT
+
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: DATABASE_URL
+
+            - name: API_GATEWAY_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: API_GATEWAY_URL
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4002
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4002
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 3
+
+          resources:
+            requests:
+              memory: "48Mi"
+              cpu: "20m"
+            limits:
+              memory: "128Mi"
+              cpu: "250m"

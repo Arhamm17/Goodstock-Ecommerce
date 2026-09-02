@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: devops-ecommerce
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: api-gateway
+
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+
+    spec:
+      containers:
+        - name: api-gateway
+          image: devops-ecommerce-api-gateway:phase5b
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 80
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+
+          resources:
+            requests:
+              memory: "16Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "150m"
