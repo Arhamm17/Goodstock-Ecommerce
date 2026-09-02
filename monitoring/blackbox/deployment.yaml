@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: blackbox-exporter
+
+  template:
+    metadata:
+      labels:
+        app: blackbox-exporter
+
+    spec:
+      containers:
+        - name: blackbox-exporter
+          image: quay.io/prometheus/blackbox-exporter:v0.28.0
+
+          args:
+            - --config.file=/config/blackbox.yml
+
+          ports:
+            - containerPort: 9115
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 20Mi
+
+            limits:
+              cpu: 100m
+              memory: 64Mi
+
+          volumeMounts:
+            - name: config
+              mountPath: /config
+
+      volumes:
+        - name: config
+          configMap:
+            name: blackbox-config
