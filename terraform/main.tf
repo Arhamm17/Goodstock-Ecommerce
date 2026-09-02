@@ -31,12 +31,20 @@ resource "aws_security_group" "app_server" {
   }
 
   ingress {
-  description = "K3s NodePort for e-commerce app"
-  from_port   = 30080
-  to_port     = 30080
-  protocol    = "tcp"
-  cidr_blocks = [var.my_ip_cidr]
-}
+    description = "K3s NodePort for e-commerce app"
+    from_port   = 30080
+    to_port     = 30080
+    protocol    = "tcp"
+    cidr_blocks = [var.my_ip_cidr]
+  }
+
+  ingress {
+    description = "Jenkins UI and GitHub webhook"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   egress {
     description = "Allow all outbound (needed for apt, Docker pulls, etc.)"
