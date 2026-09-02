@@ -19,11 +19,6 @@ pipeline {
         KUBECONFIG    = '/var/lib/jenkins/.kube/config'
         K8S_NAMESPACE = 'devops-ecommerce'
 
-        API_GATEWAY_CHANGED = 'false'
-        FRONTEND_CHANGED    = 'false'
-        PRODUCT_CHANGED     = 'false'
-        ORDER_CHANGED       = 'false'
-        USER_CHANGED        = 'false'
     }
 
     stages {
@@ -151,7 +146,7 @@ pipeline {
                     }
                 }
             }
-            
+
         stage('Validate') {
             steps {
                 sh '''
