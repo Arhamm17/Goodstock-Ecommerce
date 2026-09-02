@@ -2192,7 +2192,7 @@ async function refreshOrders() {
 
   }
 
-  const activeOrders = orders.filter(order => String(order.status).toLowerCase() !== 'completed');
+  const activeOrders =  orders.filter(order => String(order.status).toLowerCase() !== 'completed');
   const completedHistory = getCompletedOrderHistory();
   const completedOrders = completedHistory.length
     ? completedHistory
