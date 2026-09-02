@@ -1,0 +1,7 @@
+{
+  "python.defaultInterpreterPath": "/home/arham/devops-ecommerce/order-service/venv/bin/python",
+  "python.analysis.extraPaths": [
+    "/home/arham/devops-ecommerce/order-service"
+  ],
+  "python.terminal.activateEnvironment": true
+}

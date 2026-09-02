@@ -276,7 +276,40 @@ def delete_order(order_id):
     if not deleted:
         return jsonify({'error': 'Order not found'}), 404
 
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute('SELECT setval(pg_get_serial_sequence(\'orders\', \'id\'), COALESCE((SELECT MAX(id) FROM orders), 0), true)')
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception:
+        app.logger.exception('Failed to reset order id sequence after delete')
+
     return jsonify({'deleted': True, 'order': deleted})
+
+
+@app.route('/orders/complete', methods=['POST'])
+def clear_completed_orders():
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('DELETE FROM orders WHERE status=%s RETURNING *', ('completed',))
+    deleted = cur.fetchall()
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute('SELECT setval(pg_get_serial_sequence(\'orders\', \'id\'), 0, true)')
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception:
+        app.logger.exception('Failed to reset order sequence after clearing completed orders')
+
+    return jsonify({'deleted': len(deleted), 'orders': deleted})
 
 
 if __name__ == '__main__':

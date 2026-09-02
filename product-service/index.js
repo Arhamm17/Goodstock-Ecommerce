@@ -26,7 +26,25 @@ app.get('/products', async (req, res) => {
 });
 
 app.post('/products', async (req, res) => {
-  const product = new Product(req.body);
+  const { name, price, stock } = req.body || {};
+  const productName = typeof name === 'string' ? name.trim() : '';
+  const parsedPrice = Number(price);
+  const parsedStock = Number(stock);
+
+  if (!productName || !Number.isFinite(parsedPrice) || !Number.isFinite(parsedStock)) {
+    return res.status(400).json({ error: 'Name, price, and stock are required' });
+  }
+
+  if (parsedPrice < 0 || parsedStock < 0) {
+    return res.status(400).json({ error: 'Price and stock cannot be negative' });
+  }
+
+  const product = new Product({
+    name: productName,
+    price: parsedPrice,
+    stock: parsedStock,
+  });
+
   await product.save();
   res.status(201).json(product);
 });

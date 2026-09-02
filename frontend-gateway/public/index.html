@@ -17,7 +17,7 @@
     --surface-2: #f8fafc;
     --ink: #17181c;
     --muted: #73757d;
-    --border: #dfe6ef;
+    --border: #c9d4e2;
     --accent: #3d3af1;
     --accent-dark: #2d2ac5;
     --accent-soft: rgba(61,58,241,.09);
@@ -26,18 +26,18 @@
     --amber: #c4791f;
     --danger: #d64545;
     --shadow: 0 12px 32px rgba(35,58,92,.08);
-    --card-border: #cbd6e4;
-    --add-card-border: #aebed1;
+    --card-border: #c4cfdd;
+    --add-card-border: #a5b7cf;
     --radius: 16px;
   }
 
   html.dark {
-    --bg: #0e1014;
+    --bg: #0c1118;
     --surface: #171a20;
     --surface-2: #1d2027;
     --ink: #f5f5f7;
     --muted: #a1a5ae;
-    --border: #2b2f38;
+    --border: #3a414d;
     --accent: #7774ff;
     --accent-dark: #615df0;
     --accent-soft: rgba(119,116,255,.12);
@@ -46,8 +46,8 @@
     --amber: #e4a14d;
     --danger: #ff6b6b;
     --shadow: 0 14px 40px rgba(0,0,0,.22);
-    --card-border: #39414d;
-    --add-card-border: #4a5563;
+    --card-border: #454d5c;
+    --add-card-border: #5a6574;
   }
 
   * {
@@ -60,7 +60,7 @@
 
   body {
     margin: 0;
-    background: linear-gradient(135deg, #c9e3ff 0%, #e9f4ff 42%, #ffffff 100%);
+    background: linear-gradient(135deg, #c8e1ff 0%, #eaf3ff 42%, #f8fbff 100%);
     background-attachment: fixed;
     color: var(--ink);
     font-family: 'Inter', sans-serif;
@@ -68,7 +68,7 @@
   }
 
   html.dark body {
-    background: linear-gradient(135deg, #29466b 0%, #1c2b42 45%, #0e1014 100%);
+    background: linear-gradient(135deg, #18273a 0%, #101b2a 42%, #0c1118 100%);
   }
 
   button,
@@ -903,6 +903,28 @@
     max-width: 900px;
   }
 
+  .completed-orders-container {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 6px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(255,255,255,.08);
+  }
+
+  .completed-orders-container::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .completed-orders-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .completed-orders-container::-webkit-scrollbar-thumb {
+    background: rgba(115, 117, 125, 0.45);
+    border-radius: 999px;
+  }
+
   .order-row {
     display: flex;
     justify-content: space-between;
@@ -1357,7 +1379,7 @@
       </div>
     </div>
 
-    <div class="orders-container">
+    <div class="orders-container completed-orders-container">
       <div id="completed-order-list"></div>
     </div>
 
@@ -1535,6 +1557,19 @@ function showToast(message, type = '') {
   }, 2500);
 }
 
+function getCompletedOrderHistory() {
+  try {
+    const raw = localStorage.getItem('goodstock-completed-orders');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCompletedOrderHistory(history) {
+  localStorage.setItem('goodstock-completed-orders', JSON.stringify(history.slice(0, 50)));
+}
+
 
 /* =========================
    API
@@ -1556,11 +1591,25 @@ async function api(method, path, body) {
 
   });
 
-  if (!res.ok) {
-    throw new Error('request failed');
+  const contentType = res.headers.get('content-type') || '';
+  let payload = null;
+
+  if (contentType.includes('application/json')) {
+    payload = await res.json();
+  } else if (contentType.includes('text/')) {
+    payload = await res.text();
   }
 
-  return res.json();
+  if (!res.ok) {
+    const message =
+      payload && typeof payload === 'object'
+        ? (payload.error || payload.message || 'request failed')
+        : (payload || 'request failed');
+
+    throw new Error(message);
+  }
+
+  return payload ?? {};
 }
 
 
@@ -1620,6 +1669,7 @@ function renderProducts(products) {
       </div>
     `;
 
+    attachProductEvents();
     return;
   }
 
@@ -2003,77 +2053,53 @@ function attachProductEvents() {
   });
 
 
-  addCard
-    .querySelector('#np-submit')
-    .addEventListener('click', async () => {
+  const npSubmitBtn = addCard.querySelector('#np-submit');
 
-      const name =
-        document
-          .getElementById('np-name')
-          .value.trim();
+  npSubmitBtn.addEventListener('click', async () => {
 
-      const price =
-        parseFloat(
-          document
-            .getElementById('np-price')
-            .value
-        );
+    const nameField = document.getElementById('np-name');
+    const priceField = document.getElementById('np-price');
+    const stockField = document.getElementById('np-stock');
 
-      const stock =
-        parseInt(
-          document
-            .getElementById('np-stock')
-            .value
-        );
+    const name = nameField.value.trim();
+    const rawPrice = priceField.value.trim();
+    const rawStock = stockField.value.trim();
+    const price = Number(rawPrice);
+    const stock = Number(rawStock);
 
+    const hasName = name.length > 0;
+    const hasPrice = rawPrice.length > 0 && Number.isFinite(price) && price >= 0;
+    const hasStock = rawStock.length > 0 && Number.isFinite(stock) && stock >= 0;
 
-      if (
-        !name ||
-        isNaN(price) ||
-        isNaN(stock) ||
-        price < 0 ||
-        stock < 0
-      ) {
+    if (!hasName || !hasPrice || !hasStock) {
+      showToast('Please fill in name, price, and stock to list a product', 'error');
+      return;
+    }
 
-        showToast(
-          'Please enter valid product details',
-          'error'
-        );
+    if (addForm.dataset.submitting === 'true') {
+      return;
+    }
 
-        return;
-      }
+    addForm.dataset.submitting = 'true';
+    npSubmitBtn.disabled = true;
+    npSubmitBtn.textContent = 'Listing...';
 
-
-      try {
-
-        await api(
-          'POST',
-          '/api/products',
-          {
-            name,
-            price,
-            stock
-          }
-        );
-
-        showToast(
-          'Product listed successfully',
-          'success'
-        );
-
-        closeAddForm();
-        refreshProducts();
-
-      } catch {
-
-        showToast(
-          'Could not list product',
-          'error'
-        );
-
-      }
-
-    });
+    try {
+      await api('POST', '/api/products', { name, price, stock });
+      showToast('Product listed successfully', 'success');
+      nameField.value = '';
+      priceField.value = '';
+      stockField.value = '';
+      closeAddForm();
+      refreshProducts();
+    } catch (error) {
+      showToast(error.message || 'Could not list product', 'error');
+    } finally {
+      addForm.dataset.submitting = 'false';
+      npSubmitBtn.disabled = false;
+      npSubmitBtn.textContent = 'List product';
+    }
+  });
 
 }
 
@@ -2167,7 +2193,10 @@ async function refreshOrders() {
   }
 
   const activeOrders = orders.filter(order => String(order.status).toLowerCase() !== 'completed');
-  const completedOrders = orders.filter(order => String(order.status).toLowerCase() === 'completed');
+  const completedHistory = getCompletedOrderHistory();
+  const completedOrders = completedHistory.length
+    ? completedHistory
+    : [];
 
   document.getElementById('order-count')
     .textContent =
@@ -2255,15 +2284,7 @@ async function refreshOrders() {
                 </span>
 
                 <div class="order-actions">
-                  <input
-                    class="mini-input"
-                    type="number"
-                    min="1"
-                    value="${o.quantity}"
-                    data-order-qty="${o.id}"
-                    aria-label="Update quantity for order ${o.id}"
-                  >
-                  <button class="mini-btn update-order" data-id="${o.id}">
+                  <button class="mini-btn update-order" data-id="${o.id}" data-current-qty="${o.quantity}">
                     Update
                   </button>
                   <button class="complete-btn complete-order" data-id="${o.id}" data-product-id="${o.product_id}" data-quantity="${o.quantity}">
@@ -2284,28 +2305,88 @@ async function refreshOrders() {
     document.querySelectorAll('.update-order').forEach(button => {
       button.addEventListener('click', async () => {
         const id = button.dataset.id;
-        const qtyInput = document.querySelector(`[data-order-qty="${id}"]`);
-        const nextQty = parseInt(qtyInput.value, 10);
+        const currentQty = Number(button.dataset.currentQty || 1);
+        const row = button.closest('.order-row');
+        const existingEditor = row.querySelector('.qty-editor');
 
-        if (!Number.isFinite(nextQty) || nextQty < 1) {
-          showToast('Please enter a valid quantity', 'error');
+        if (existingEditor) {
+          const nextQty = parseInt(existingEditor.value, 10);
+
+          if (!Number.isFinite(nextQty) || nextQty < 1) {
+            showToast('Please enter a valid quantity', 'error');
+            return;
+          }
+
+          if (nextQty === currentQty) {
+            existingEditor.remove();
+            const confirm = row.querySelector('.confirm-update');
+            if (confirm) confirm.remove();
+            return;
+          }
+
+          try {
+            const order = orders.find(item => String(item.id) === String(id));
+            const payload = {
+              product_id: order ? order.product_id : null,
+              quantity: nextQty,
+              status: order ? order.status : 'pending'
+            };
+
+            await api('PUT', `/api/orders/${id}`, payload);
+            showToast('Order updated', 'success');
+            refreshProducts();
+          } catch {
+            showToast('Could not update order', 'error');
+          }
+
           return;
         }
 
-        try {
-          const order = orders.find(item => String(item.id) === String(id));
-          const payload = {
-            product_id: order ? order.product_id : null,
-            quantity: nextQty,
-            status: order ? order.status : 'pending'
-          };
+        const editor = document.createElement('input');
+        editor.type = 'number';
+        editor.min = '1';
+        editor.value = String(currentQty);
+        editor.className = 'mini-input qty-editor';
+        editor.setAttribute('aria-label', `Update quantity for order ${id}`);
 
-          await api('PUT', `/api/orders/${id}`, payload);
-          showToast('Order updated', 'success');
-          refreshProducts();
-        } catch {
-          showToast('Could not update order', 'error');
-        }
+        const confirm = document.createElement('button');
+        confirm.className = 'mini-btn confirm-update';
+        confirm.textContent = 'Save';
+        confirm.type = 'button';
+
+        confirm.addEventListener('click', async () => {
+          const nextQty = parseInt(editor.value, 10);
+
+          if (!Number.isFinite(nextQty) || nextQty < 1) {
+            showToast('Please enter a valid quantity', 'error');
+            return;
+          }
+
+          if (nextQty === currentQty) {
+            editor.remove();
+            confirm.remove();
+            return;
+          }
+
+          try {
+            const order = orders.find(item => String(item.id) === String(id));
+            const payload = {
+              product_id: order ? order.product_id : null,
+              quantity: nextQty,
+              status: order ? order.status : 'pending'
+            };
+
+            await api('PUT', `/api/orders/${id}`, payload);
+            showToast('Order updated', 'success');
+            refreshProducts();
+          } catch {
+            showToast('Could not update order', 'error');
+          }
+        });
+
+        const actionGroup = button.parentElement;
+        actionGroup.insertBefore(editor, button);
+        actionGroup.insertBefore(confirm, button);
       });
     });
 
@@ -2333,11 +2414,22 @@ async function refreshOrders() {
         }
 
         try {
-          await api('PUT', `/api/orders/${id}`, {
+          const productInfo = allProducts.find(item => String(item._id) === String(productId));
+          const history = getCompletedOrderHistory();
+          const nextDisplayId = history.length ? Math.max(...history.map(item => Number(item.displayId || 0))) + 1 : 1;
+          const completedEntry = {
+            displayId: nextDisplayId,
             product_id: productId,
             quantity,
-            status: 'completed'
-          });
+            status: 'completed',
+            name: productInfo ? productInfo.name : 'Product',
+            total: Number(productInfo ? productInfo.price : 0) * Number(quantity || 1),
+            completedAt: Date.now()
+          };
+
+          await api('DELETE', `/api/orders/${id}`);
+
+          saveCompletedOrderHistory([completedEntry, ...history]);
 
           showToast('Order marked as completed', 'success');
           refreshProducts();
@@ -2374,12 +2466,12 @@ async function refreshOrders() {
   completedList.innerHTML =
     completedOrders
       .slice()
-      .reverse()
-      .map(o => {
+      .map((o, index) => {
         const product = productMap.get(String(o.product_id));
-        const productName = product ? product.name : String(o.product_id);
-        const productPrice = product ? Number(product.price) : 0;
-        const total = productPrice * Number(o.quantity || 1);
+        const productName = o.name || (product ? product.name : String(o.product_id));
+        const productPrice = product ? Number(product.price) : Number(o.total || 0) / Math.max(Number(o.quantity || 1), 1);
+        const total = Number(o.total || productPrice * Number(o.quantity || 1));
+        const displayId = Number(o.displayId ?? index + 1);
 
         return `
           <div class="order-row">
@@ -2389,7 +2481,7 @@ async function refreshOrders() {
                 <span class="order-product-qty">× ${o.quantity}</span>
               </div>
               <div class="order-meta">
-                <span class="oid mono">#${o.id}</span>
+                <span class="oid mono">#${displayId}</span>
                 <span>·</span>
                 <span>Fulfilled and moved to completed</span>
               </div>
@@ -2397,7 +2489,7 @@ async function refreshOrders() {
             <div class="order-side">
               <div class="order-total">$${total.toFixed(2)}</div>
               <span class="status-tag" style="background: rgba(22,150,83,.12); color: var(--green);">
-                ${escapeHtml(String(o.status))}
+                ${escapeHtml(String(o.status || 'completed'))}
               </span>
             </div>
           </div>
