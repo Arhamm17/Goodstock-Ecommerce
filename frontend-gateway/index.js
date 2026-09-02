@@ -89,7 +89,7 @@ app.put('/api/orders/:id', async (req, res) => {
     const product = products.find(item => String(item._id) === String(req.body.product_id));
 
     if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ error: 'Product not found'  });
     }
 
     const requestedQty = Number(req.body.quantity);
