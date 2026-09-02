@@ -144,13 +144,14 @@ pipeline {
                 API Gateway : ${env.API_GATEWAY_CHANGED}
                 Frontend    : ${env.FRONTEND_CHANGED}
                 Product     : ${env.PRODUCT_CHANGED}
-Order       : ${env.ORDER_CHANGED}
-User        : ${env.USER_CHANGED}
---------------------------------
-"""
-        }
-    }
-}
+                Order       : ${env.ORDER_CHANGED}
+                User        : ${env.USER_CHANGED}
+                --------------------------------
+                """
+                    }
+                }
+            }
+            
         stage('Validate') {
             steps {
                 sh '''
