@@ -8,13 +8,13 @@ pipeline {
     }
 
     environment {
-        DOCKERHUB_NAMESPACE = 'YOUR_DOCKERHUB_USERNAME'
+        DOCKERHUB_NAMESPACE = 'arhammrashid17'
 
-        API_GATEWAY_IMAGE = "${DOCKERHUB_NAMESPACE}/devops-ecommerce-api-gateway"
-        FRONTEND_IMAGE    = "${DOCKERHUB_NAMESPACE}/devops-ecommerce-frontend"
-        PRODUCT_IMAGE     = "${DOCKERHUB_NAMESPACE}/devops-ecommerce-product"
-        ORDER_IMAGE       = "${DOCKERHUB_NAMESPACE}/devops-ecommerce-order"
-        USER_IMAGE        = "${DOCKERHUB_NAMESPACE}/devops-ecommerce-user"
+        API_GATEWAY_IMAGE = "${arhammrashid17}/devops-ecommerce-api-gateway"
+        FRONTEND_IMAGE    = "${arhammrashid17}/devops-ecommerce-frontend"
+        PRODUCT_IMAGE     = "${arhammrashid17}/devops-ecommerce-product"
+        ORDER_IMAGE       = "${arhammrashid17}/devops-ecommerce-order"
+        USER_IMAGE        = "${arhammrashid17}/devops-ecommerce-user"
 
         KUBECONFIG    = '/var/lib/jenkins/.kube/config'
         K8S_NAMESPACE = 'devops-ecommerce'
