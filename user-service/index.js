@@ -25,7 +25,7 @@ app.post('/session', async (req, res) => {
 
 app.get('/session/:userId', async (req, res) => {
   const session = await redisClient.get(`session:${req.params.userId}`);
-  if (!session) return res.status(404).json({ error: 'No session found' });
+  if (!session) return res.status(404).json({ error: 'No session found'});
   res.json(JSON.parse(session));
 });
 
