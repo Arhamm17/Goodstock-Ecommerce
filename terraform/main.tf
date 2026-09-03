@@ -18,6 +18,14 @@ resource "aws_key_pair" "deployer" {
   public_key = file(var.ssh_public_key_path)
 }
 
+resource "aws_eip" "app_server_eip" {
+  domain = "vpc"
+
+  tags = {
+    Name = "devops_ecommerce"
+  }
+}
+
 resource "aws_security_group" "app_server" {
   name        = "${var.project_name}-sg"
   description = "Security group for the DevOps GoodStock e-commerce EC2 instance"
