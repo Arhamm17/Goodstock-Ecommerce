@@ -43,7 +43,7 @@ def init_db():
 
 
 def gateway_url(path):
-    return f"{API_GATEWAY_URL.rstrip('/')}{path}" 
+    return f"{API_GATEWAY_URL.rstrip('/')}{path}"
 
 
 def parse_quantity(value, field_name='quantity'):
