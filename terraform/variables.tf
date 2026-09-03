@@ -5,7 +5,7 @@ variable "aws_region" {
 }
 
 variable "project_name" {
-  description = "GoodStock"
+  description = "GoodStock project name"
   type        = string
   default     = "devops-ecommerce"
 }
@@ -29,7 +29,32 @@ variable "ssh_public_key_path" {
 }
 
 variable "my_ip_cidr" {
-  description = "Your IP address in CIDR form, allowed to SSH in (e.g. 203.0.113.4/32)"
+  description = "Your IP address in CIDR form allowed to SSH"
   type        = string
-  # No default on purpose — you must set this explicitly, so SSH is never accidentally open to the whole internet.
+}
+
+variable "service_nodes" {
+  description = "Additional EC2 nodes for application services"
+
+  type = map(object({
+    role = string
+  }))
+
+  default = {
+    frontend = {
+      role = "frontend"
+    }
+
+    product = {
+      role = "product"
+    }
+
+    order = {
+      role = "order"
+    }
+
+    user = {
+      role = "user"
+    }
+  }
 }

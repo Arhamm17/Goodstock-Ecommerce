@@ -1,6 +1,6 @@
 data "aws_ami" "ubuntu_2404" {
   most_recent = true
-  owners      = ["099720109477"] # Canonical's official AWS account
+  owners      = ["099720109477"]
 
   filter {
     name   = "name"
@@ -80,6 +80,31 @@ resource "aws_instance" "app_server" {
   }
 
   tags = {
-    Name = "${var.project_name}-server"
+    Name     = "${var.project_name}-api-node"
+    Workload = "api"
+    K3sRole  = "server"
+  }
+}
+
+resource "aws_instance" "service_nodes" {
+  for_each = var.service_nodes
+
+  ami                    = data.aws_ami.ubuntu_2404.id
+  instance_type          = var.instance_type
+  key_name               = aws_key_pair.deployer.key_name
+  vpc_security_group_ids = [aws_security_group.app_server.id]
+
+  subnet_id = aws_instance.app_server.subnet_id
+
+  root_block_device {
+    volume_size           = var.root_volume_size_gb
+    volume_type           = "gp3"
+    delete_on_termination = true
+  }
+
+  tags = {
+    Name     = "${var.project_name}-${each.key}-node"
+    Workload = each.key
+    K3sRole  = "agent"
   }
 }
