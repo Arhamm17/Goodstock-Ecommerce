@@ -5,12 +5,12 @@ pipeline {
         timestamps()
         disableConcurrentBuilds()
         buildDiscarder(logRotator(numToKeepStr: '10'))
+        skipDefaultCheckout(true)
     }
 
     environment {
         KUBECONFIG    = '/var/lib/jenkins/.kube/config'
         K8S_NAMESPACE = 'devops-ecommerce'
-
     }
 
     stages {
@@ -25,135 +25,161 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKERHUB_USER',
-                    passwordVariable: 'DOCKERHUB_TOKEN'
-                 )
-            ]) {
-                script {
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKERHUB_USER',
+                        passwordVariable: 'DOCKERHUB_TOKEN'
+                    )
+                ]) {
+                    script {
+                        def shortCommit = sh(
+                            script: 'git rev-parse --short=7 HEAD',
+                            returnStdout: true
+                        ).trim()
 
-                    def shortCommit = sh(
-                        script: 'git rev-parse --short=7 HEAD',
-                        returnStdout: true
-                    ).trim()
+                        env.IMAGE_TAG = "${env.BUILD_NUMBER}-${shortCommit}"
 
-                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${shortCommit}"
+                        env.API_GATEWAY_IMAGE =
+                            "${DOCKERHUB_USER}/devops-ecommerce-api-gateway"
 
-                    env.API_GATEWAY_IMAGE = "${DOCKERHUB_USER}/devops-ecommerce-api-gateway"
-                    env.FRONTEND_IMAGE = "${DOCKERHUB_USER}/devops-ecommerce-frontend"
-                    env.PRODUCT_IMAGE = "${DOCKERHUB_USER}/devops-ecommerce-product"
-                    env.ORDER_IMAGE = "${DOCKERHUB_USER}/devops-ecommerce-order"
-                    env.USER_IMAGE = "${DOCKERHUB_USER}/devops-ecommerce-user"
+                        env.FRONTEND_IMAGE =
+                            "${DOCKERHUB_USER}/devops-ecommerce-frontend"
 
-                    echo "Image tag: ${env.IMAGE_TAG}"
-                    echo "Docker Hub namespace loaded dynamically"
-                }
-            }
-        }
-    }
+                        env.PRODUCT_IMAGE =
+                            "${DOCKERHUB_USER}/devops-ecommerce-product"
 
-        stage('Detect Changes') {
-    steps {
-        script {
+                        env.ORDER_IMAGE =
+                            "${DOCKERHUB_USER}/devops-ecommerce-order"
 
-            if (!env.GIT_PREVIOUS_SUCCESSFUL_COMMIT?.trim()) {
+                        env.USER_IMAGE =
+                            "${DOCKERHUB_USER}/devops-ecommerce-user"
 
-                echo 'No previous successful Jenkins commit found.'
-                echo 'Building all application images.'
-
-                env.API_GATEWAY_CHANGED = 'true'
-                env.FRONTEND_CHANGED    = 'true'
-                env.PRODUCT_CHANGED     = 'true'
-                env.ORDER_CHANGED       = 'true'
-                env.USER_CHANGED        = 'true'
-
-            } else {
-
-                sh """
-                    git diff --name-only \
-                      ${env.GIT_PREVIOUS_SUCCESSFUL_COMMIT} \
-                      ${env.GIT_COMMIT} \
-                      > changed-files.txt
-                """
-
-                sh '''
-                    echo "Changed files:"
-                    if [ -s changed-files.txt ]; then
-                        cat changed-files.txt
-                    else
-                        echo "No changed files detected"
-                    fi
-                '''
-
-                env.API_GATEWAY_CHANGED = sh(
-                    script: """
-                        if grep -q '^api-gateway/' changed-files.txt; then
-                            echo true
-                        else
-                            echo false
-                        fi
-                    """,
-                    returnStdout: true
-                ).trim()
-
-                env.FRONTEND_CHANGED = sh(
-                    script: """
-                        if grep -q '^frontend-gateway/' changed-files.txt; then
-                            echo true
-                        else
-                            echo false
-                        fi
-                    """,
-                    returnStdout: true
-                ).trim()
-
-                env.PRODUCT_CHANGED = sh(
-                    script: """
-                        if grep -q '^product-service/' changed-files.txt; then
-                            echo true
-                        else
-                            echo false
-                        fi
-                    """,
-                    returnStdout: true
-                ).trim()
-
-                env.ORDER_CHANGED = sh(
-                    script: """
-                        if grep -q '^order-service/' changed-files.txt; then
-                            echo true
-                        else
-                            echo false
-                        fi
-                    """,
-                    returnStdout: true
-                ).trim()
-
-                env.USER_CHANGED = sh(
-                    script: """
-                        if grep -q '^user-service/' changed-files.txt; then
-                            echo true
-                        else
-                            echo false
-                        fi
-                    """,
-                    returnStdout: true
-                ).trim()
-            }
-
-            echo """
-                Change detection result:
-                --------------------------------
-                API Gateway : ${env.API_GATEWAY_CHANGED}
-                Frontend    : ${env.FRONTEND_CHANGED}
-                Product     : ${env.PRODUCT_CHANGED}
-                Order       : ${env.ORDER_CHANGED}
-                User        : ${env.USER_CHANGED}
-                --------------------------------
-                """
+                        echo "Image tag: ${env.IMAGE_TAG}"
+                        echo "Docker Hub namespace loaded dynamically"
                     }
                 }
             }
+        }
+
+        stage('Detect Changes') {
+            steps {
+                script {
+
+                    def changedFiles = []
+
+                    for (changeSet in currentBuild.changeSets) {
+                        for (entry in changeSet.items) {
+                            for (file in entry.affectedFiles) {
+                                changedFiles.add(file.path)
+                            }
+                        }
+                    }
+
+                    changedFiles = changedFiles.unique().sort()
+
+                    if (changedFiles.isEmpty()) {
+
+                        echo "Jenkins changelog is empty."
+                        echo "Falling back to current Git commit."
+
+                        def fallbackOutput = sh(
+                            script: '''
+                                git diff-tree \
+                                  --no-commit-id \
+                                  --name-only \
+                                  -r HEAD
+                            ''',
+                            returnStdout: true
+                        ).trim()
+
+                        if (fallbackOutput) {
+                            changedFiles =
+                                fallbackOutput
+                                    .split('\\n')
+                                    .collect { it.trim() }
+                                    .findAll { it }
+                                    .unique()
+                                    .sort()
+                        }
+                    }
+
+                    if (changedFiles.isEmpty()) {
+
+                        echo "No reliable changed-file list available."
+                        echo "Safely treating all application services as changed."
+
+                        env.API_GATEWAY_CHANGED = 'true'
+                        env.FRONTEND_CHANGED    = 'true'
+                        env.PRODUCT_CHANGED     = 'true'
+                        env.ORDER_CHANGED       = 'true'
+                        env.USER_CHANGED        = 'true'
+
+                        writeFile(
+                            file: 'changed-files.txt',
+                            text: 'Change list unavailable - safe full build\n'
+                        )
+
+                    } else {
+
+                        writeFile(
+                            file: 'changed-files.txt',
+                            text: changedFiles.join('\n') + '\n'
+                        )
+
+                        echo "Changed files:"
+
+                        changedFiles.each {
+                            echo "  ${it}"
+                        }
+
+                        env.API_GATEWAY_CHANGED =
+                            changedFiles.any {
+                                it.startsWith('api-gateway/')
+                            } ? 'true' : 'false'
+
+                        env.FRONTEND_CHANGED =
+                            changedFiles.any {
+                                it.startsWith('frontend-gateway/')
+                            } ? 'true' : 'false'
+
+                        env.PRODUCT_CHANGED =
+                            changedFiles.any {
+                                it.startsWith('product-service/')
+                            } ? 'true' : 'false'
+
+                        env.ORDER_CHANGED =
+                            changedFiles.any {
+                                it.startsWith('order-service/')
+                            } ? 'true' : 'false'
+
+                        env.USER_CHANGED =
+                            changedFiles.any {
+                                it.startsWith('user-service/')
+                            } ? 'true' : 'false'
+                    }
+
+                    env.ANY_APP_CHANGED = (
+                        env.API_GATEWAY_CHANGED == 'true' ||
+                        env.FRONTEND_CHANGED == 'true' ||
+                        env.PRODUCT_CHANGED == 'true' ||
+                        env.ORDER_CHANGED == 'true' ||
+                        env.USER_CHANGED == 'true'
+                    ) ? 'true' : 'false'
+
+                    echo """
+                    Change detection result:
+                    --------------------------------
+                    API Gateway : ${env.API_GATEWAY_CHANGED}
+                    Frontend    : ${env.FRONTEND_CHANGED}
+                    Product     : ${env.PRODUCT_CHANGED}
+                    Order       : ${env.ORDER_CHANGED}
+                    User        : ${env.USER_CHANGED}
+                    --------------------------------
+                    Any App     : ${env.ANY_APP_CHANGED}
+                    --------------------------------
+                    """
+                }
+            }
+        }
 
         stage('Validate') {
             steps {
@@ -169,6 +195,7 @@ pipeline {
                     test -f user-service/Dockerfile
 
                     docker --version
+
                     kubectl get namespace ${K8S_NAMESPACE}
                 '''
             }
@@ -255,14 +282,9 @@ pipeline {
         }
 
         stage('Push Images') {
-
             when {
                 expression {
-                    env.API_GATEWAY_CHANGED == 'true' ||
-                    env.FRONTEND_CHANGED == 'true' ||
-                    env.PRODUCT_CHANGED == 'true' ||
-                    env.ORDER_CHANGED == 'true' ||
-                    env.USER_CHANGED == 'true'
+                    env.ANY_APP_CHANGED == 'true'
                 }
             }
 
@@ -330,6 +352,12 @@ pipeline {
         }
 
         stage('Deploy to K3s') {
+            when {
+                expression {
+                    env.ANY_APP_CHANGED == 'true'
+                }
+            }
+
             steps {
                 script {
 
@@ -382,6 +410,12 @@ pipeline {
         }
 
         stage('Verify Rollouts') {
+            when {
+                expression {
+                    env.ANY_APP_CHANGED == 'true'
+                }
+            }
+
             steps {
                 script {
 
@@ -434,6 +468,12 @@ pipeline {
         }
 
         stage('Smoke Tests') {
+            when {
+                expression {
+                    env.ANY_APP_CHANGED == 'true'
+                }
+            }
+
             steps {
                 sh '''
                     set -eux
@@ -446,12 +486,14 @@ pipeline {
 
                     curl --fail \
                       --retry 3 \
-                      --max-time 10 \
+                      --retry-delay 2 \
+                      --max-time 15 \
                       http://localhost:30080/api/products
 
                     curl --fail \
                       --retry 3 \
-                      --max-time 10 \
+                      --retry-delay 2 \
+                      --max-time 15 \
                       http://localhost:30080/api/orders
                 '''
             }
@@ -462,9 +504,23 @@ pipeline {
                 sh '''
                     echo "Pipeline image tag: ${IMAGE_TAG}"
 
+                    echo ""
+                    echo "Changed services:"
+                    echo "API Gateway : ${API_GATEWAY_CHANGED}"
+                    echo "Frontend    : ${FRONTEND_CHANGED}"
+                    echo "Product     : ${PRODUCT_CHANGED}"
+                    echo "Order       : ${ORDER_CHANGED}"
+                    echo "User        : ${USER_CHANGED}"
+
+                    echo ""
+                    echo "Current Kubernetes deployment images:"
+
                     kubectl get deployments \
                       -n ${K8S_NAMESPACE} \
                       -o custom-columns='NAME:.metadata.name,IMAGE:.spec.template.spec.containers[*].image'
+
+                    echo ""
+                    echo "Current pods:"
 
                     kubectl get pods \
                       -n ${K8S_NAMESPACE}
