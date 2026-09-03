@@ -20,7 +20,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok', service: 'user-service
 app.post('/session', async (req, res) => {
   const { userId, data } = req.body;
   await redisClient.set(`session:${userId}`, JSON.stringify(data), { EX: 3600 });
-  res.status(201).json({ message: 'Session created', userId });
+  res.status(201).json({ message: 'Session created', userId }) ;
 });
 
 app.get('/session/:userId', async (req, res) => {
