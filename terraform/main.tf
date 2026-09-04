@@ -36,36 +36,20 @@ resource "aws_eip" "service_eips" {
   }
 }
 
-resource "aws_security_group" "app_server" {
-  name        = "${var.project_name}-sg"
-  description = "Security group for the DevOps GoodStock e-commerce EC2 instance"
+resource "aws_security_group" "k3s_cluster" {
+  name        = "${var.project_name}-k3s-cluster-sg"
+  description = "K3s node-to-node communication"
 
   ingress {
-    description = "SSH from my IP only"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.my_ip_cidr]
-  }
-
-  ingress {
-    description = "K3s NodePort for e-commerce app"
-    from_port   = 30080
-    to_port     = 30080
-    protocol    = "tcp"
-    cidr_blocks = [var.my_ip_cidr]
-  }
-
-  ingress {
-    description = "Jenkins UI and GitHub webhook"
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow all K3s node communication"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self        = true
   }
 
   egress {
-    description = "Allow all outbound (needed for apt, Docker pulls, etc.)"
+    description = "Allow outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -73,15 +57,93 @@ resource "aws_security_group" "app_server" {
   }
 
   tags = {
-    Name = "${var.project_name}-sg"
+    Name = "${var.project_name}-k3s-cluster-sg"
+  }
+}
+
+
+resource "aws_security_group" "public_access" {
+  name        = "${var.project_name}-public-sg"
+  description = "Public access for frontend and API"
+
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [var.my_ip_cidr]
+  }
+
+  ingress {
+    description = "HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Application NodePort"
+    from_port   = 30080
+    to_port     = 30080
+    protocol    = "tcp"
+    cidr_blocks = [var.my_ip_cidr]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-public-sg"
+  }
+}
+
+
+resource "aws_security_group" "private_services" {
+  name        = "${var.project_name}-private-services-sg"
+  description = "Private application service communication"
+
+  ingress {
+    description = "Internal VPC traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["172.31.0.0/16"]
+  }
+
+  egress {
+    description = "Allow outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-private-services-sg"
   }
 }
 
 resource "aws_instance" "app_server" {
-  ami                    = data.aws_ami.ubuntu_2404.id
-  instance_type          = var.instance_type
-  key_name               = aws_key_pair.deployer.key_name
-  vpc_security_group_ids = [aws_security_group.app_server.id]
+  ami           = data.aws_ami.ubuntu_2404.id
+  instance_type = var.instance_type
+  key_name      = aws_key_pair.deployer.key_name
+  vpc_security_group_ids = [
+    aws_security_group.public_access.id,
+    aws_security_group.k3s_cluster.id
+  ]
 
   root_block_device {
     volume_size           = var.root_volume_size_gb
@@ -99,10 +161,16 @@ resource "aws_instance" "app_server" {
 resource "aws_instance" "service_nodes" {
   for_each = var.service_nodes
 
-  ami                    = data.aws_ami.ubuntu_2404.id
-  instance_type          = var.instance_type
-  key_name               = aws_key_pair.deployer.key_name
-  vpc_security_group_ids = [aws_security_group.app_server.id]
+  ami           = data.aws_ami.ubuntu_2404.id
+  instance_type = var.instance_type
+  key_name      = aws_key_pair.deployer.key_name
+  vpc_security_group_ids = each.key == "frontend" ? [
+    aws_security_group.public_access.id,
+    aws_security_group.k3s_cluster.id
+    ] : [
+    aws_security_group.private_services.id,
+    aws_security_group.k3s_cluster.id
+  ]
 
   subnet_id = aws_instance.app_server.subnet_id
 
