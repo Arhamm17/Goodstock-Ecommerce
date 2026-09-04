@@ -21,7 +21,7 @@ spec:
         
       containers:
         - name: frontend-gateway
-          image: devops-ecommerce-frontend:phase5b
+          image: docker.io/arhammrashid17/devops-ecommerce-frontend:20-853d06f
           imagePullPolicy: IfNotPresent
 
           ports:

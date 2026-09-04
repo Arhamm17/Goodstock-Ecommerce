@@ -21,7 +21,7 @@ spec:
         
       containers:
         - name: user-service
-          image: devops-ecommerce-user:phase5b
+          image: docker.io/arhammrashid17/devops-ecommerce-user:18-4b029f0
           imagePullPolicy: IfNotPresent
 
           ports:

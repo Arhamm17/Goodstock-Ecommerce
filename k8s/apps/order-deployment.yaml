@@ -21,7 +21,7 @@ spec:
       
       containers:
         - name: order-service
-          image: devops-ecommerce-order:phase5b
+          image: docker.io/arhammrashid17/devops-ecommerce-order:19-6d7a91d
           imagePullPolicy: IfNotPresent
 
           ports:

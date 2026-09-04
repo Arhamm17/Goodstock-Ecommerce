@@ -21,7 +21,7 @@ spec:
       
       containers:
         - name: api-gateway
-          image: devops-ecommerce-api-gateway:phase5b
+          image: docker.io/arhammrashid17/devops-ecommerce-api-gateway:21-b399eeb
           imagePullPolicy: IfNotPresent
 
           ports:

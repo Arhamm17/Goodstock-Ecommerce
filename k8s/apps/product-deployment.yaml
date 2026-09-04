@@ -23,7 +23,7 @@ spec:
 
       containers: 
         - name: product-service 
-          image: devops-ecommerce-product:phase5b
+          image: docker.io/arhammrashid17/devops-ecommerce-product:17-43daac3
           imagePullPolicy: IfNotPresent 
 
           ports: 
