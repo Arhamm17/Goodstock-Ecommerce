@@ -1,8 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: frontend-gateway
   namespace: devops-ecommerce
+
 spec:
   replicas: 2
 
@@ -13,7 +15,11 @@ spec:
       maxSurge: 1
 
   minReadySeconds: 10
-  
+
+  selector:
+    matchLabels:
+      app: frontend-gateway
+
   template:
     metadata:
       labels:
@@ -22,7 +28,7 @@ spec:
     spec:
       nodeSelector:
         workload: frontend
-        
+
       containers:
         - name: frontend-gateway
           image: docker.io/arhammrashid17/devops-ecommerce-frontend:20-853d06f
@@ -51,6 +57,7 @@ spec:
             requests:
               memory: "16Mi"
               cpu: "10m"
+
             limits:
               memory: "64Mi"
               cpu: "150m"

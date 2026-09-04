@@ -1,8 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: user-service
   namespace: devops-ecommerce
+
 spec:
   replicas: 2
 
@@ -13,7 +15,11 @@ spec:
       maxSurge: 1
 
   minReadySeconds: 10
-  
+
+  selector:
+    matchLabels:
+      app: user-service
+
   template:
     metadata:
       labels:
@@ -22,7 +28,7 @@ spec:
     spec:
       nodeSelector:
         workload: user
-        
+
       containers:
         - name: user-service
           image: docker.io/arhammrashid17/devops-ecommerce-user:18-4b029f0
@@ -65,6 +71,7 @@ spec:
             requests:
               memory: "48Mi"
               cpu: "20m"
+
             limits:
               memory: "128Mi"
               cpu: "250m"
