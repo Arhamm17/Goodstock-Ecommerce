@@ -29,6 +29,16 @@ spec:
       nodeSelector:
         workload: product
 
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: product-service
+              topologyKey: kubernetes.io/hostname
+
       containers:
         - name: product-service
           image: docker.io/arhammrashid17/devops-ecommerce-product:17-43daac3

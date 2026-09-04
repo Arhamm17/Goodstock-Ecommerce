@@ -29,6 +29,16 @@ spec:
       nodeSelector:
         workload: order
 
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: order-service
+              topologyKey: kubernetes.io/hostname
+
       containers:
         - name: order-service
           image: docker.io/arhammrashid17/devops-ecommerce-order:19-6d7a91d

@@ -29,6 +29,16 @@ spec:
       nodeSelector:
         workload: api
 
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: api-gateway
+              topologyKey: kubernetes.io/hostname
+
       containers:
         - name: api-gateway
           image: docker.io/arhammrashid17/devops-ecommerce-api-gateway:21-b399eeb
