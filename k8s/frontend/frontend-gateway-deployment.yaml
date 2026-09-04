@@ -32,7 +32,7 @@ spec:
       containers:
         - name: frontend-gateway
           image: docker.io/arhammrashid17/devops-ecommerce-frontend:20-853d06f
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
 
           ports:
             - containerPort: 8080
@@ -55,9 +55,9 @@ spec:
 
           resources:
             requests:
-              memory: "16Mi"
-              cpu: "10m"
+              memory: "64Mi"
+              cpu: "50m"
 
             limits:
-              memory: "64Mi"
-              cpu: "150m"
+              memory: "128Mi"
+              cpu: "250m"

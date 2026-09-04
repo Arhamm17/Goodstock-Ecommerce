@@ -32,7 +32,7 @@ spec:
       containers:
         - name: user-service
           image: docker.io/arhammrashid17/devops-ecommerce-user:18-4b029f0
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
 
           ports:
             - containerPort: 4003
@@ -69,9 +69,9 @@ spec:
 
           resources:
             requests:
-              memory: "48Mi"
-              cpu: "20m"
+              memory: "128Mi"
+              cpu: "100m"
 
             limits:
-              memory: "128Mi"
-              cpu: "250m"
+              memory: "256Mi"
+              cpu: "500m"
