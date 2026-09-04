@@ -16,6 +16,9 @@ spec:
         app: api-gateway
 
     spec:
+      nodeSelector:
+        workload: api
+      
       containers:
         - name: api-gateway
           image: devops-ecommerce-api-gateway:phase5b

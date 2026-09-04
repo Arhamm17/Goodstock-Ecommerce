@@ -16,6 +16,9 @@ spec:
         app: frontend-gateway
 
     spec:
+      nodeSelector:
+        workload: frontend
+        
       containers:
         - name: frontend-gateway
           image: devops-ecommerce-frontend:phase5b

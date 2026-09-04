@@ -16,6 +16,9 @@ spec:
         app: order-service
 
     spec:
+      nodeSelector:
+        workload: order
+      
       containers:
         - name: order-service
           image: devops-ecommerce-order:phase5b

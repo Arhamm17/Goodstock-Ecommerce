@@ -16,6 +16,9 @@ spec:
         app: user-service
 
     spec:
+      nodeSelector:
+        workload: user
+        
       containers:
         - name: user-service
           image: devops-ecommerce-user:phase5b

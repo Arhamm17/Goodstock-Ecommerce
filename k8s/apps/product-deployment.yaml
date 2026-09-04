@@ -1,44 +1,49 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: product-service
-  namespace: devops-ecommerce
-spec:
-  replicas: 1
+apiVersion: apps/v1 
+kind: Deployment 
 
-  selector:
-    matchLabels:
-      app: product-service
+metadata: 
+  name: product-service 
+  namespace: devops-ecommerce 
+
+spec: 
+  replicas: 1 
+
+  selector: 
+    matchLabels: 
+      app: product-service 
 
   template:
-    metadata:
-      labels:
-        app: product-service
+    metadata: 
+      labels: 
+        app: product-service 
 
     spec:
-      containers:
-        - name: product-service
+      nodeSelector:
+        workload: product
+
+      containers: 
+        - name: product-service 
           image: devops-ecommerce-product:phase5b
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: IfNotPresent 
 
-          ports:
-            - containerPort: 4001
+          ports: 
+            - containerPort: 4001 
 
-          env:
-            - name: PORT
-              valueFrom:
-                configMapKeyRef:
+          env: 
+            - name: PORT 
+              valueFrom: 
+                configMapKeyRef: 
                   name: app-config
                   key: PRODUCT_PORT
 
-            - name: MONGO_URI
-              valueFrom:
-                configMapKeyRef:
+            - name: MONGO_URI 
+              valueFrom: 
+                configMapKeyRef: 
                   name: app-config
                   key: MONGO_URI
 
-          readinessProbe:
-            httpGet:
+          readinessProbe: 
+            httpGet: 
               path: /health
               port: 4001
             initialDelaySeconds: 10
@@ -46,18 +51,19 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 6
 
-          livenessProbe:
-            httpGet:
+          livenessProbe: 
+            httpGet: 
               path: /health
               port: 4001
             initialDelaySeconds: 20
             periodSeconds: 20
             timeoutSeconds: 3
 
-          resources:
-            requests:
+          resources: 
+            requests: 
               memory: "48Mi"
               cpu: "20m"
-            limits:
+
+            limits: 
               memory: "128Mi"
               cpu: "250m"
