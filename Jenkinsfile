@@ -11,6 +11,7 @@ pipeline {
     environment {
         KUBECONFIG    = '/var/lib/jenkins/.kube/config'
         K8S_NAMESPACE = 'devops-ecommerce'
+        ROLLBACK_ENABLED = 'true'
     }
 
     stages {
@@ -531,30 +532,73 @@ pipeline {
 
     post {
 
-        success {
-            echo 'CI/CD pipeline completed successfully.'
-            echo "Pipeline image tag: ${env.IMAGE_TAG}"
+    success {
+        echo 'CI/CD pipeline completed successfully.'
+        echo "Pipeline image tag: ${env.IMAGE_TAG}"
+    }
+
+    failure {
+
+        echo 'Pipeline failed. Starting automatic rollback.'
+
+        script {
+
+            if (env.ROLLBACK_ENABLED == 'true') {
+
+                if (env.API_GATEWAY_CHANGED == 'true') {
+                    sh '''
+                        kubectl rollout undo deployment/api-gateway \
+                        -n ${K8S_NAMESPACE} || true
+                    '''
+                }
+
+                if (env.FRONTEND_CHANGED == 'true') {
+                    sh '''
+                        kubectl rollout undo deployment/frontend-gateway \
+                        -n ${K8S_NAMESPACE} || true
+                    '''
+                }
+
+                if (env.PRODUCT_CHANGED == 'true') {
+                    sh '''
+                        kubectl rollout undo deployment/product-service \
+                        -n ${K8S_NAMESPACE} || true
+                    '''
+                }
+
+                if (env.ORDER_CHANGED == 'true') {
+                    sh '''
+                        kubectl rollout undo deployment/order-service \
+                        -n ${K8S_NAMESPACE} || true
+                    '''
+                }
+
+                if (env.USER_CHANGED == 'true') {
+                    sh '''
+                        kubectl rollout undo deployment/user-service \
+                        -n ${K8S_NAMESPACE} || true
+                    '''
+                }
+            }
         }
 
-        failure {
-            echo 'Pipeline failed. Collecting Kubernetes diagnostics.'
+        echo 'Collecting Kubernetes diagnostics.'
 
-            sh '''
-                kubectl get pods \
-                  -n ${K8S_NAMESPACE} \
-                  -o wide || true
+        sh '''
+            kubectl get pods \
+              -n ${K8S_NAMESPACE} \
+              -o wide || true
 
-                kubectl get events \
-                  -n ${K8S_NAMESPACE} \
-                  --sort-by=.lastTimestamp \
-                  | tail -40 || true
-            '''
-        }
+            kubectl get events \
+              -n ${K8S_NAMESPACE} \
+              --sort-by=.lastTimestamp \
+              | tail -40 || true
+        '''
+    }
 
-        always {
-            sh '''
-                docker image prune -f || true
-            '''
-        }
+    always {
+        sh '''
+            docker image prune -f || true
+        '''
     }
 }
