@@ -26,6 +26,16 @@ resource "aws_eip" "app_server_eip" {
   }
 }
 
+resource "aws_eip" "service_eips" {
+  for_each = var.service_nodes
+
+  domain = "vpc"
+
+  tags = {
+    Name = "${var.project_name}-${each.key}-eip"
+  }
+}
+
 resource "aws_security_group" "app_server" {
   name        = "${var.project_name}-sg"
   description = "Security group for the DevOps GoodStock e-commerce EC2 instance"
@@ -107,4 +117,11 @@ resource "aws_instance" "service_nodes" {
     Workload = each.key
     K3sRole  = "agent"
   }
+}
+
+resource "aws_eip_association" "service_eip_associations" {
+  for_each = var.service_nodes
+
+  instance_id   = aws_instance.service_nodes[each.key].id
+  allocation_id = aws_eip.service_eips[each.key].id
 }

@@ -56,3 +56,12 @@ output "all_private_ips" {
     }
   )
 }
+
+output "service_elastic_ips" {
+  description = "Elastic IPs assigned to service nodes"
+
+  value = {
+    for name, eip in aws_eip.service_eips :
+    name => eip.public_ip
+  }
+}
